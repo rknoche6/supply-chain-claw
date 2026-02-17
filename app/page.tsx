@@ -14,7 +14,8 @@ export default function HomePage() {
           and drill into specific countries.
         </p>
         <p>
-          Explore details: <Link href="/methodology">Methodology</Link>
+          Explore details: <Link href="/compare">Compare</Link> ·{" "}
+          <Link href="/methodology">Methodology</Link>
         </p>
       </header>
 

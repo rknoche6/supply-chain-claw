@@ -363,6 +363,16 @@ p {
   gap: var(--space-4);
 }
 
+.compareColumns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.comparePanel {
+  gap: var(--space-3);
+}
+
 ul {
   margin: var(--space-2) 0 0;
   padding-left: 1.2rem;
@@ -609,6 +619,10 @@ select {
   }
 
   .gridTwo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compareColumns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
