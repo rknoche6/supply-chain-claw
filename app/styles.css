@@ -182,6 +182,40 @@ p {
   margin-top: var(--space-2);
 }
 
+.routePicker {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.routePickerButton {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(11, 16, 32, 0.6);
+  color: var(--color-text-primary);
+  display: grid;
+  gap: var(--space-1);
+  text-align: left;
+  padding: var(--space-2);
+}
+
+.routePickerButton span:last-child {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.routePickerButton:hover {
+  border-color: var(--color-border-strong);
+  background: rgba(120, 200, 255, 0.1);
+}
+
+.routePickerButton.isActive {
+  border-color: var(--color-accent);
+  background: rgba(120, 200, 255, 0.18);
+}
+
 .ocean {
   fill: #0f1a35;
 }

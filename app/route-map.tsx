@@ -36,7 +36,9 @@ export default function RouteMap({ routes, selectedRouteId }: RouteMapProps) {
     .filter((route) => route.points.length > 1);
 
   const selectedRoute =
-    selectedRouteId === null ? null : filteredRoutes.find((route) => route.id === selectedRouteId) ?? null;
+    selectedRouteId === null
+      ? null
+      : (filteredRoutes.find((route) => route.id === selectedRouteId) ?? null);
 
   const uniquePorts = Array.from(
     new Set(filteredRoutes.flatMap((route) => route.stops).filter((stop) => portCoordinates[stop]))

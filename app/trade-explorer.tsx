@@ -43,6 +43,7 @@ export default function TradeExplorer() {
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [pageSize, setPageSize] = useState(6);
   const [page, setPage] = useState(1);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
   const countries = useMemo(() => {
     const all = new Set<string>();
@@ -145,6 +146,24 @@ export default function TradeExplorer() {
       stops: flow.keyRoute.split("→").map((item) => item.trim()),
     }));
   }, [filtered]);
+
+  useEffect(() => {
+    if (mappedRoutes.length === 0) {
+      setSelectedRouteId(null);
+      return;
+    }
+
+    if (selectedRouteId && mappedRoutes.some((route) => route.id === selectedRouteId)) {
+      return;
+    }
+
+    setSelectedRouteId(mappedRoutes[0].id);
+  }, [mappedRoutes, selectedRouteId]);
+
+  const selectedRoute =
+    selectedRouteId === null
+      ? null
+      : (mappedRoutes.find((route) => route.id === selectedRouteId) ?? null);
 
   return (
     <>
@@ -358,9 +377,37 @@ export default function TradeExplorer() {
 
       <Card
         title="Filtered route map"
-        subtitle="A cleaner world map with highlighted route segments for your current filtered results."
+        subtitle="Tap a route to spotlight its exact path. Great for comparing corridors on mobile and desktop."
       >
-        <RouteMap routes={mappedRoutes} />
+        {mappedRoutes.length > 0 ? (
+          <>
+            <div className="routePicker" role="list" aria-label="Filtered route options">
+              {mappedRoutes.map((route) => (
+                <button
+                  key={route.id}
+                  type="button"
+                  role="listitem"
+                  className={`routePickerButton ${selectedRouteId === route.id ? "isActive" : ""}`}
+                  onClick={() => setSelectedRouteId(route.id)}
+                >
+                  <span>{route.product}</span>
+                  <span>{route.stops.join(" → ")}</span>
+                </button>
+              ))}
+            </div>
+
+            {selectedRoute ? (
+              <p className="sectionIntro">
+                Spotlight: <strong>{selectedRoute.product}</strong> ·{" "}
+                {selectedRoute.stops.join(" → ")}
+              </p>
+            ) : null}
+
+            <RouteMap routes={mappedRoutes} selectedRouteId={selectedRouteId} />
+          </>
+        ) : (
+          <p className="sectionIntro">No mappable routes for the current filters.</p>
+        )}
       </Card>
 
       <Card
