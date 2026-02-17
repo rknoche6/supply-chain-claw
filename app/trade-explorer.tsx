@@ -98,6 +98,25 @@ export default function TradeExplorer() {
       .slice(0, 5);
   }, [filtered]);
 
+  const countrySpotlight = useMemo(() => {
+    if (country === "All countries") {
+      return null;
+    }
+
+    const importerFlows = filtered.filter((flow) => flow.topImporters.includes(country));
+    const exporterFlows = filtered.filter((flow) => flow.topExporters.includes(country));
+    const uniqueProducts = Array.from(
+      new Set([...importerFlows, ...exporterFlows].map((flow) => flow.product))
+    );
+
+    return {
+      name: country,
+      importerFlows,
+      exporterFlows,
+      uniqueProducts,
+    };
+  }, [country, filtered]);
+
   const mappedRoutes = useMemo(() => {
     return filtered
       .map((flow, index) => {
@@ -202,7 +221,13 @@ export default function TradeExplorer() {
             <ul className="miniList">
               {topImporters.map(([name, count]) => (
                 <li key={name}>
-                  {name} <span>({count})</span>
+                  <button
+                    type="button"
+                    className={`quickFilterButton ${country === name ? "isActive" : ""}`}
+                    onClick={() => setCountry(name)}
+                  >
+                    {name} <span>({count})</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -212,13 +237,52 @@ export default function TradeExplorer() {
             <ul className="miniList">
               {topExporters.map(([name, count]) => (
                 <li key={name}>
-                  {name} <span>({count})</span>
+                  <button
+                    type="button"
+                    className={`quickFilterButton ${country === name ? "isActive" : ""}`}
+                    onClick={() => setCountry(name)}
+                  >
+                    {name} <span>({count})</span>
+                  </button>
                 </li>
               ))}
             </ul>
           </article>
         </StatGrid>
       </Card>
+
+      {countrySpotlight ? (
+        <Card
+          title={`Country spotlight: ${countrySpotlight.name}`}
+          subtitle="See whether this country appears as an importer, exporter, or both in the active filters."
+        >
+          <div className="spotlightGrid">
+            <article className="statCard">
+              <p className="statLabel">As importer</p>
+              <p className="statValue">{countrySpotlight.importerFlows.length}</p>
+              <p className="statHint">matching flows</p>
+            </article>
+            <article className="statCard">
+              <p className="statLabel">As exporter</p>
+              <p className="statValue">{countrySpotlight.exporterFlows.length}</p>
+              <p className="statHint">matching flows</p>
+            </article>
+          </div>
+
+          <div>
+            <p className="statLabel">Products in spotlight</p>
+            {countrySpotlight.uniqueProducts.length > 0 ? (
+              <ul className="miniList">
+                {countrySpotlight.uniqueProducts.map((product) => (
+                  <li key={product}>{product}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sectionIntro">No products in the current filter context.</p>
+            )}
+          </div>
+        </Card>
+      ) : null}
 
       <Card
         title="Filtered route map"
