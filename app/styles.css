@@ -384,6 +384,66 @@ select {
   color: var(--color-text-secondary);
 }
 
+.filterActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.secondaryButton {
+  background: rgba(120, 200, 255, 0.12);
+  color: var(--color-accent);
+  border: 1px solid rgba(120, 200, 255, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.flowToolbar {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.flowToolbarControls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+
+.flowToolbarControls label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.flowTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+.flowTable th,
+.flowTable td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  vertical-align: top;
+}
+
+.flowTable th {
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 @media (min-width: 720px) {
   .container {
     padding: var(--space-6) var(--space-5);
@@ -412,5 +472,14 @@ select {
 
   .flowList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flowToolbar {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+
+  .flowToolbarControls {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 }

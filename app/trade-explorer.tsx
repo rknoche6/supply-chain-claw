@@ -23,11 +23,15 @@ const portCoordinates: Record<string, { x: number; y: number }> = {
 };
 
 type CategoryFilter = (typeof categories)[number];
+type ViewMode = "cards" | "table";
+type SortMode = "relevance" | "product" | "importers" | "exporters";
 
 export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
   const [country, setCountry] = useState("All countries");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [sortMode, setSortMode] = useState<SortMode>("relevance");
 
   const countries = useMemo(() => {
     const all = new Set<string>();
@@ -55,6 +59,24 @@ export default function TradeExplorer() {
       return byCategory && byCountry && byQuery;
     });
   }, [category, country, query]);
+
+  const sortedFlows = useMemo(() => {
+    const items = [...filtered];
+
+    if (sortMode === "product") {
+      items.sort((a, b) => a.product.localeCompare(b.product));
+    }
+
+    if (sortMode === "importers") {
+      items.sort((a, b) => b.topImporters.length - a.topImporters.length);
+    }
+
+    if (sortMode === "exporters") {
+      items.sort((a, b) => b.topExporters.length - a.topExporters.length);
+    }
+
+    return items;
+  }, [filtered, sortMode]);
 
   const topImporters = useMemo(() => {
     const counts = new Map<string, number>();
@@ -148,6 +170,21 @@ export default function TradeExplorer() {
             </select>
           </label>
         </div>
+
+        <div className="filterActions">
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => {
+              setQuery("");
+              setCategory("All");
+              setCountry("All countries");
+              setSortMode("relevance");
+            }}
+          >
+            Reset filters
+          </button>
+        </div>
       </Card>
 
       <Card
@@ -220,22 +257,80 @@ export default function TradeExplorer() {
         title="Filtered supply flows"
         subtitle="Focus on what matters now — products, routes, and country participation."
       >
-        <div className="flowList">
-          {filtered.map((flow) => (
-            <article key={`${flow.category}-${flow.product}`} className="flowCard">
-              <p className="flowCategory">{flow.category}</p>
-              <h3>{flow.product}</h3>
-              <p className="flowRoute">{flow.keyRoute}</p>
-              <p>
-                <strong>Importers:</strong> {flow.topImporters.join(", ")}
-              </p>
-              <p>
-                <strong>Exporters:</strong> {flow.topExporters.join(", ")}
-              </p>
-            </article>
-          ))}
-          {filtered.length === 0 ? <p>No matching flows yet. Try a broader filter.</p> : null}
+        <div className="flowToolbar">
+          <p className="sectionIntro">{sortedFlows.length} results</p>
+          <div className="flowToolbarControls">
+            <label>
+              Data view
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                aria-label="Select data view"
+              >
+                <option value="cards">Cards</option>
+                <option value="table">Table</option>
+              </select>
+            </label>
+            <label>
+              Sort by
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                aria-label="Select sort order"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="product">Product A-Z</option>
+                <option value="importers">Most importers</option>
+                <option value="exporters">Most exporters</option>
+              </select>
+            </label>
+          </div>
         </div>
+
+        {viewMode === "cards" ? (
+          <div className="flowList">
+            {sortedFlows.map((flow) => (
+              <article key={`${flow.category}-${flow.product}`} className="flowCard">
+                <p className="flowCategory">{flow.category}</p>
+                <h3>{flow.product}</h3>
+                <p className="flowRoute">{flow.keyRoute}</p>
+                <p>
+                  <strong>Importers:</strong> {flow.topImporters.join(", ")}
+                </p>
+                <p>
+                  <strong>Exporters:</strong> {flow.topExporters.join(", ")}
+                </p>
+              </article>
+            ))}
+            {sortedFlows.length === 0 ? <p>No matching flows yet. Try a broader filter.</p> : null}
+          </div>
+        ) : (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Route</th>
+                  <th>Importers</th>
+                  <th>Exporters</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedFlows.map((flow) => (
+                  <tr key={`${flow.category}-${flow.product}`}>
+                    <td>{flow.product}</td>
+                    <td>{flow.category}</td>
+                    <td>{flow.keyRoute}</td>
+                    <td>{flow.topImporters.join(", ")}</td>
+                    <td>{flow.topExporters.join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {sortedFlows.length === 0 ? <p>No matching flows yet. Try a broader filter.</p> : null}
+          </div>
+        )}
       </Card>
     </>
   );
