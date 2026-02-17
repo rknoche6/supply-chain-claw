@@ -1,12 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../components";
 import { getCountryProfiles } from "../../lib/countries";
 import { rawMaterials } from "../../lib/raw-materials";
 
 const countries = getCountryProfiles();
+
+function pickSlugFromQuery(
+  candidate: string | null,
+  validSlugs: string[],
+  fallback: string
+): string {
+  if (!candidate) {
+    return fallback;
+  }
+
+  return validSlugs.includes(candidate) ? candidate : fallback;
+}
 
 function getMaterialStats(slug: string) {
   const material = rawMaterials.find((item) => item.slug === slug);
@@ -24,15 +36,19 @@ function getMaterialStats(slug: string) {
 }
 
 export default function ComparePage() {
-  const [leftCountrySlug, setLeftCountrySlug] = useState(countries[0]?.slug ?? "");
-  const [rightCountrySlug, setRightCountrySlug] = useState(
-    countries[1]?.slug ?? countries[0]?.slug ?? ""
-  );
+  const countrySlugs = countries.map((country) => country.slug);
+  const materialSlugs = rawMaterials.map((material) => material.slug);
 
-  const [leftMaterialSlug, setLeftMaterialSlug] = useState(rawMaterials[0]?.slug ?? "");
-  const [rightMaterialSlug, setRightMaterialSlug] = useState(
-    rawMaterials[1]?.slug ?? rawMaterials[0]?.slug ?? ""
-  );
+  const defaultLeftCountry = countries[0]?.slug ?? "";
+  const defaultRightCountry = countries[1]?.slug ?? countries[0]?.slug ?? "";
+  const defaultLeftMaterial = rawMaterials[0]?.slug ?? "";
+  const defaultRightMaterial = rawMaterials[1]?.slug ?? rawMaterials[0]?.slug ?? "";
+
+  const [leftCountrySlug, setLeftCountrySlug] = useState(defaultLeftCountry);
+  const [rightCountrySlug, setRightCountrySlug] = useState(defaultRightCountry);
+
+  const [leftMaterialSlug, setLeftMaterialSlug] = useState(defaultLeftMaterial);
+  const [rightMaterialSlug, setRightMaterialSlug] = useState(defaultRightMaterial);
 
   const leftCountry = useMemo(
     () => countries.find((item) => item.slug === leftCountrySlug) ?? null,
@@ -73,6 +89,43 @@ export default function ComparePage() {
       topProducerGap: leftMaterial.top.value - rightMaterial.top.value,
     };
   }, [leftMaterial, rightMaterial]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    setLeftCountrySlug(
+      pickSlugFromQuery(params.get("leftCountry"), countrySlugs, defaultLeftCountry)
+    );
+    setRightCountrySlug(
+      pickSlugFromQuery(params.get("rightCountry"), countrySlugs, defaultRightCountry)
+    );
+    setLeftMaterialSlug(
+      pickSlugFromQuery(params.get("leftMaterial"), materialSlugs, defaultLeftMaterial)
+    );
+    setRightMaterialSlug(
+      pickSlugFromQuery(params.get("rightMaterial"), materialSlugs, defaultRightMaterial)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("leftCountry", leftCountrySlug);
+    params.set("rightCountry", rightCountrySlug);
+    params.set("leftMaterial", leftMaterialSlug);
+    params.set("rightMaterial", rightMaterialSlug);
+
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug]);
 
   return (
     <Container>
@@ -115,6 +168,18 @@ export default function ComparePage() {
             </select>
           </label>
         </div>
+
+        <p className="sectionIntro">
+          <button
+            type="button"
+            onClick={() => {
+              setLeftCountrySlug(rightCountrySlug);
+              setRightCountrySlug(leftCountrySlug);
+            }}
+          >
+            Swap countries
+          </button>
+        </p>
 
         <div className="compareColumns">
           {[leftCountry, rightCountry].map((country) =>
@@ -213,6 +278,18 @@ export default function ComparePage() {
             </select>
           </label>
         </div>
+
+        <p className="sectionIntro">
+          <button
+            type="button"
+            onClick={() => {
+              setLeftMaterialSlug(rightMaterialSlug);
+              setRightMaterialSlug(leftMaterialSlug);
+            }}
+          >
+            Swap materials
+          </button>
+        </p>
 
         <div className="compareColumns">
           {[leftMaterial, rightMaterial].map((item) =>
