@@ -1,0 +1,44 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, Arial, sans-serif;
+  background: #0f1220;
+  color: #e9edff;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+h1 {
+  margin-bottom: 0.6rem;
+}
+
+.card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #2d365c;
+  border-radius: 12px;
+  background: #171c33;
+}
+
+.mapPlaceholder {
+  height: 260px;
+  border-radius: 10px;
+  border: 1px dashed #6070b8;
+  display: grid;
+  place-items: center;
+  color: #b7c2ff;
+  background: linear-gradient(145deg, #12182f 0%, #1a2142 100%);
+}
+
+li { margin: 0.35rem 0; }
