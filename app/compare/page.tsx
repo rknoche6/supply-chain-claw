@@ -46,6 +46,34 @@ export default function ComparePage() {
   const leftMaterial = useMemo(() => getMaterialStats(leftMaterialSlug), [leftMaterialSlug]);
   const rightMaterial = useMemo(() => getMaterialStats(rightMaterialSlug), [rightMaterialSlug]);
 
+  const countryComparison = useMemo(() => {
+    if (!leftCountry || !rightCountry) {
+      return null;
+    }
+
+    const importerDelta =
+      leftCountry.roleBreakdown.importerCount - rightCountry.roleBreakdown.importerCount;
+    const exporterDelta =
+      leftCountry.roleBreakdown.exporterCount - rightCountry.roleBreakdown.exporterCount;
+    const flowDelta = leftCountry.roleBreakdown.totalFlows - rightCountry.roleBreakdown.totalFlows;
+
+    return { importerDelta, exporterDelta, flowDelta };
+  }, [leftCountry, rightCountry]);
+
+  const materialComparison = useMemo(() => {
+    if (!leftMaterial || !rightMaterial) {
+      return null;
+    }
+
+    const sameUnit = leftMaterial.top.unit === rightMaterial.top.unit;
+
+    return {
+      sameUnit,
+      totalDelta: leftMaterial.total - rightMaterial.total,
+      topProducerGap: leftMaterial.top.value - rightMaterial.top.value,
+    };
+  }, [leftMaterial, rightMaterial]);
+
   return (
     <Container>
       <header className="pageHeader">
@@ -115,6 +143,41 @@ export default function ComparePage() {
             ) : null
           )}
         </div>
+
+        {countryComparison && leftCountry && rightCountry ? (
+          <div className="spotlightGrid">
+            <article className="statCard">
+              <p className="statLabel">Importer role delta</p>
+              <p className="statValue">
+                {countryComparison.importerDelta >= 0 ? "+" : ""}
+                {countryComparison.importerDelta}
+              </p>
+              <p className="statHint">
+                {leftCountry.name} vs {rightCountry.name}
+              </p>
+            </article>
+            <article className="statCard">
+              <p className="statLabel">Exporter role delta</p>
+              <p className="statValue">
+                {countryComparison.exporterDelta >= 0 ? "+" : ""}
+                {countryComparison.exporterDelta}
+              </p>
+              <p className="statHint">
+                {leftCountry.name} vs {rightCountry.name}
+              </p>
+            </article>
+            <article className="statCard">
+              <p className="statLabel">Unique product delta</p>
+              <p className="statValue">
+                {countryComparison.flowDelta >= 0 ? "+" : ""}
+                {countryComparison.flowDelta}
+              </p>
+              <p className="statHint">
+                {leftCountry.name} vs {rightCountry.name}
+              </p>
+            </article>
+          </div>
+        ) : null}
       </Card>
 
       <Card>
@@ -180,6 +243,35 @@ export default function ComparePage() {
             ) : null
           )}
         </div>
+
+        {materialComparison && leftMaterial && rightMaterial ? (
+          <div className="spotlightGrid">
+            <article className="statCard">
+              <p className="statLabel">Total captured delta</p>
+              <p className="statValue">
+                {materialComparison.totalDelta >= 0 ? "+" : ""}
+                {materialComparison.totalDelta.toLocaleString()}
+                {materialComparison.sameUnit ? ` ${leftMaterial.top.unit}` : ""}
+              </p>
+              <p className="statHint">
+                {leftMaterial.material.name} vs {rightMaterial.material.name}
+                {materialComparison.sameUnit ? "" : " (unit-aware reading required)"}
+              </p>
+            </article>
+            <article className="statCard">
+              <p className="statLabel">Top producer value gap</p>
+              <p className="statValue">
+                {materialComparison.topProducerGap >= 0 ? "+" : ""}
+                {materialComparison.topProducerGap.toLocaleString()}
+                {materialComparison.sameUnit ? ` ${leftMaterial.top.unit}` : ""}
+              </p>
+              <p className="statHint">
+                {leftMaterial.top.country} vs {rightMaterial.top.country}
+                {materialComparison.sameUnit ? "" : " (different units)"}
+              </p>
+            </article>
+          </div>
+        ) : null}
       </Card>
     </Container>
   );
