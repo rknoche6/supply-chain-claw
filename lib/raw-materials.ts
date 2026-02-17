@@ -12,6 +12,7 @@ export type DataPoint = {
 
 export type RawMaterialItem = {
   name: string;
+  slug: string;
   category: MaterialCategory;
   notes: string;
   updatedAt: string;
@@ -21,6 +22,7 @@ export type RawMaterialItem = {
 export const rawMaterials: RawMaterialItem[] = [
   {
     name: "Iron ore",
+    slug: "iron-ore",
     category: "Metals",
     notes: "Mine production values in million metric tons of usable ore content.",
     updatedAt: "2026-02-17",
@@ -59,6 +61,7 @@ export const rawMaterials: RawMaterialItem[] = [
   },
   {
     name: "Gold",
+    slug: "gold",
     category: "Metals",
     notes: "Mine production values in metric tons.",
     updatedAt: "2026-02-17",
@@ -97,6 +100,7 @@ export const rawMaterials: RawMaterialItem[] = [
   },
   {
     name: "Copper",
+    slug: "copper",
     category: "Metals",
     notes: "Mine production values in million metric tons.",
     updatedAt: "2026-02-17",
@@ -135,6 +139,7 @@ export const rawMaterials: RawMaterialItem[] = [
   },
   {
     name: "Lithium",
+    slug: "lithium",
     category: "Battery Materials",
     notes: "Mine production values in metric tons Li content.",
     updatedAt: "2026-02-17",
@@ -173,6 +178,7 @@ export const rawMaterials: RawMaterialItem[] = [
   },
   {
     name: "Cobalt",
+    slug: "cobalt",
     category: "Battery Materials",
     notes: "Mine production values in metric tons Co content.",
     updatedAt: "2026-02-17",
@@ -211,6 +217,7 @@ export const rawMaterials: RawMaterialItem[] = [
   },
   {
     name: "Nickel",
+    slug: "nickel",
     category: "Battery Materials",
     notes: "Mine production values in million metric tons.",
     updatedAt: "2026-02-17",
@@ -256,3 +263,7 @@ export const rawMaterialCategories = [
   "Industrial Minerals",
   "Battery Materials",
 ] as const;
+
+export function getMaterialBySlug(slug: string) {
+  return rawMaterials.find((item) => item.slug === slug) ?? null;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card, SectionHeader } from "./components";
 import { rawMaterialCategories, rawMaterials } from "../lib/raw-materials";
@@ -85,7 +86,9 @@ export default function RawMaterialsExplorer() {
       {filtered.map((item) => (
         <article key={item.name} className="flowCard">
           <p className="flowCategory">{item.category}</p>
-          <h3>{item.name}</h3>
+          <h3>
+            <Link href={`/materials/${item.slug}`}>{item.name}</Link>
+          </h3>
           <p className="sectionIntro">{item.notes}</p>
           <p className="sectionIntro">Last updated: {item.updatedAt}</p>
 
