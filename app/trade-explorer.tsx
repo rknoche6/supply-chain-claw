@@ -3,24 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, SectionHeader, StatCard, StatGrid } from "./components";
 import { categories, tradeFlows } from "../lib/trade-data";
-
-const portCoordinates: Record<string, { x: number; y: number }> = {
-  Taipei: { x: 760, y: 250 },
-  "Los Angeles": { x: 130, y: 280 },
-  Chicago: { x: 200, y: 240 },
-  Hsinchu: { x: 770, y: 255 },
-  Singapore: { x: 700, y: 380 },
-  Rotterdam: { x: 470, y: 170 },
-  Callao: { x: 170, y: 470 },
-  Shanghai: { x: 790, y: 260 },
-  Perth: { x: 760, y: 510 },
-  Ningbo: { x: 800, y: 275 },
-  Guayaquil: { x: 150, y: 410 },
-  Novorossiysk: { x: 555, y: 215 },
-  Alexandria: { x: 530, y: 250 },
-  Qatar: { x: 590, y: 285 },
-  Yokohama: { x: 830, y: 250 },
-};
+import RouteMap from "./route-map";
 
 type CategoryFilter = (typeof categories)[number];
 type ViewMode = "cards" | "table";
@@ -144,32 +127,12 @@ export default function TradeExplorer() {
   }, [country, filtered]);
 
   const mappedRoutes = useMemo(() => {
-    return filtered
-      .map((flow, index) => {
-        const stops = flow.keyRoute.split("→").map((item) => item.trim());
-        const points = stops.map((stop) => portCoordinates[stop]).filter(Boolean);
-        if (points.length < 2) {
-          return null;
-        }
-
-        return {
-          id: `${flow.product}-${index}`,
-          product: flow.product,
-          points,
-        };
-      })
-      .filter(Boolean) as { id: string; product: string; points: { x: number; y: number }[] }[];
+    return filtered.map((flow, index) => ({
+      id: `${flow.product}-${index}`,
+      product: flow.product,
+      stops: flow.keyRoute.split("→").map((item) => item.trim()),
+    }));
   }, [filtered]);
-
-  const mapPorts = useMemo(() => {
-    const unique = new Map<string, { x: number; y: number }>();
-    mappedRoutes.forEach((route) => {
-      route.points.forEach((point) => {
-        unique.set(`${point.x}-${point.y}`, point);
-      });
-    });
-    return Array.from(unique.values());
-  }, [mappedRoutes]);
 
   return (
     <>
@@ -381,35 +344,9 @@ export default function TradeExplorer() {
 
       <Card
         title="Filtered route map"
-        subtitle="A quick geographic view of routes in your current filtered results."
+        subtitle="A cleaner world map with highlighted route segments for your current filtered results."
       >
-        <div className="mapFrame" role="img" aria-label="Map of filtered supply routes">
-          <svg viewBox="0 0 960 560">
-            <rect className="ocean" x="0" y="0" width="960" height="560" />
-            <ellipse className="continent" cx="180" cy="220" rx="140" ry="110" />
-            <ellipse className="continent" cx="260" cy="430" rx="90" ry="120" />
-            <ellipse className="continent" cx="520" cy="180" rx="120" ry="80" />
-            <ellipse className="continent" cx="560" cy="300" rx="120" ry="140" />
-            <ellipse className="continent" cx="760" cy="250" rx="180" ry="140" />
-            <ellipse className="continent" cx="790" cy="500" rx="90" ry="55" />
-
-            {mappedRoutes.map((route, idx) => (
-              <polyline
-                key={route.id}
-                className="route"
-                points={route.points.map((p) => `${p.x},${p.y}`).join(" ")}
-                style={{ opacity: 0.55 + (idx % 3) * 0.15 }}
-              />
-            ))}
-
-            {mapPorts.map((port) => (
-              <circle key={`${port.x}-${port.y}`} className="port" cx={port.x} cy={port.y} r="5" />
-            ))}
-          </svg>
-        </div>
-        <p className="sectionIntro">
-          Showing {mappedRoutes.length} mapped routes and {mapPorts.length} active ports.
-        </p>
+        <RouteMap routes={mappedRoutes} />
       </Card>
 
       <Card

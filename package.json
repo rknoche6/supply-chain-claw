@@ -16,17 +16,19 @@
   "dependencies": {
     "next": "14.2.32",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "react-simple-maps": "^3.0.0"
   },
   "devDependencies": {
-    "typescript": "5.5.4",
     "@types/node": "20.14.12",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "@types/react-simple-maps": "^3.0.6",
+    "@vitest/coverage-v8": "2.0.5",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.32",
     "prettier": "3.3.3",
-    "vitest": "2.0.5",
-    "@vitest/coverage-v8": "2.0.5"
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
   }
 }
