@@ -1,9 +1,4 @@
-const focusAreas = [
-  "Global map foundation (countries, routes, ports)",
-  "CPU/GPU supply chains (fab -> packaging -> distribution)",
-  "Raw materials (silicon, copper, lithium, rare earths)",
-  "Food chains (vegetables, fruits, cold chain logistics)",
-];
+import { roadmapFocusAreas } from "../lib/roadmap";
 
 const majorPorts = [
   { name: "Port of Shanghai", country: "China", role: "Electronics export" },
@@ -24,15 +19,15 @@ export default function HomePage() {
     <main className="container">
       <h1>Supply Chain Claw</h1>
       <p>
-        A growing open project to map how goods move from raw materials to finished products.
-        This phase now includes a visual global network foundation with example routes and major
-        port hubs.
+        A growing open project to map how goods move from raw materials to finished products. This
+        phase now includes a visual global network foundation with example routes and major port
+        hubs.
       </p>
 
       <section className="card">
         <h2>Roadmap</h2>
         <ol>
-          {focusAreas.map((item) => (
+          {roadmapFocusAreas.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ol>
@@ -65,10 +60,18 @@ export default function HomePage() {
             <circle cx="540" cy="250" r="7" className="port" />
             <circle cx="905" cy="200" r="7" className="port" />
 
-            <text x="675" y="155" className="label">Shanghai</text>
-            <text x="735" y="155" className="label">Busan</text>
-            <text x="505" y="275" className="label">Singapore</text>
-            <text x="790" y="196" className="label">LA/Long Beach</text>
+            <text x="675" y="155" className="label">
+              Shanghai
+            </text>
+            <text x="735" y="155" className="label">
+              Busan
+            </text>
+            <text x="505" y="275" className="label">
+              Singapore
+            </text>
+            <text x="790" y="196" className="label">
+              LA/Long Beach
+            </text>
           </svg>
         </div>
 
