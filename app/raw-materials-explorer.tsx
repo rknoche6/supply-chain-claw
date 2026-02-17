@@ -13,31 +13,37 @@ export default function RawMaterialsExplorer() {
 
   const countries = useMemo(() => {
     const set = new Set<string>();
-    rawMaterials.forEach((m) => m.majorCountries.forEach((c) => set.add(c)));
+    rawMaterials.forEach((m) => m.dataPoints.forEach((d) => set.add(d.country)));
     return ["All countries", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rawMaterials.filter((item) => {
-      const byCategory = category === "All" || item.category === category;
-      const byCountry = country === "All countries" || item.majorCountries.includes(country);
-      const byQuery =
-        q.length === 0 ||
-        item.name.toLowerCase().includes(q) ||
-        item.notes.toLowerCase().includes(q) ||
-        item.majorCountries.some((c) => c.toLowerCase().includes(q));
+    return rawMaterials
+      .filter((item) => {
+        const byCategory = category === "All" || item.category === category;
+        const byCountry =
+          country === "All countries" || item.dataPoints.some((point) => point.country === country);
+        const byQuery =
+          q.length === 0 ||
+          item.name.toLowerCase().includes(q) ||
+          item.notes.toLowerCase().includes(q) ||
+          item.dataPoints.some((d) => d.country.toLowerCase().includes(q));
 
-      return byCategory && byCountry && byQuery;
-    });
+        return byCategory && byCountry && byQuery;
+      })
+      .map((item) => ({
+        ...item,
+        dataPoints: [...item.dataPoints].sort((a, b) => b.value - a.value),
+      }));
   }, [category, country, query]);
 
   return (
     <Card>
       <SectionHeader
         eyebrow="Raw materials"
-        title="Where key materials are mostly located"
-        description="Simple explorer for major material concentration by country."
+        title="High-precision material concentration"
+        description="Numeric country-level values with unit, year, and source links."
       />
 
       <div className="filters">
@@ -76,18 +82,45 @@ export default function RawMaterialsExplorer() {
         </label>
       </div>
 
-      <div className="flowList">
-        {filtered.map((item) => (
-          <article key={item.name} className="flowCard">
-            <p className="flowCategory">{item.category}</p>
-            <h3>{item.name}</h3>
-            <p>
-              <strong>Main countries:</strong> {item.majorCountries.join(", ")}
-            </p>
-            <p className="sectionIntro">{item.notes}</p>
-          </article>
-        ))}
-      </div>
+      {filtered.map((item) => (
+        <article key={item.name} className="flowCard">
+          <p className="flowCategory">{item.category}</p>
+          <h3>{item.name}</h3>
+          <p className="sectionIntro">{item.notes}</p>
+          <p className="sectionIntro">Last updated: {item.updatedAt}</p>
+
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Country</th>
+                  <th>Metric</th>
+                  <th>Value</th>
+                  <th>Year</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {item.dataPoints.map((point) => (
+                  <tr key={`${item.name}-${point.country}-${point.metric}`}>
+                    <td>{point.country}</td>
+                    <td>{point.metric}</td>
+                    <td>
+                      {point.value.toLocaleString()} {point.unit}
+                    </td>
+                    <td>{point.year}</td>
+                    <td>
+                      <a href={point.sourceUrl} target="_blank" rel="noreferrer">
+                        {point.sourceName}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      ))}
 
       {filtered.length === 0 ? (
         <p className="sectionIntro">No matches. Try broader filters.</p>

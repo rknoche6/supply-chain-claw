@@ -1,70 +1,251 @@
+export type MaterialCategory = "Metals" | "Energy" | "Industrial Minerals" | "Battery Materials";
+
+export type DataPoint = {
+  country: string;
+  value: number;
+  unit: string;
+  year: number;
+  metric: "mine-production" | "reserves";
+  sourceName: string;
+  sourceUrl: string;
+};
+
 export type RawMaterialItem = {
   name: string;
-  category: "Metals" | "Energy" | "Industrial Minerals" | "Battery Materials";
-  majorCountries: string[];
+  category: MaterialCategory;
   notes: string;
+  updatedAt: string;
+  dataPoints: DataPoint[];
 };
 
 export const rawMaterials: RawMaterialItem[] = [
   {
     name: "Iron ore",
     category: "Metals",
-    majorCountries: ["Australia", "Brazil", "China", "India", "Russia"],
-    notes: "Largest mine output and reserves are concentrated in Australia and Brazil.",
+    notes: "Mine production values in million metric tons of usable ore content.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "Australia",
+        value: 960,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Iron Ore Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/iron-ore-statistics-and-information",
+      },
+      {
+        country: "Brazil",
+        value: 440,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Iron Ore Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/iron-ore-statistics-and-information",
+      },
+      {
+        country: "China",
+        value: 280,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Iron Ore Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/iron-ore-statistics-and-information",
+      },
+    ],
   },
   {
     name: "Gold",
     category: "Metals",
-    majorCountries: ["China", "Australia", "Russia", "Canada", "South Africa"],
-    notes: "Production is globally spread, with strong output across Asia, Oceania, and Africa.",
+    notes: "Mine production values in metric tons.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "China",
+        value: 370,
+        unit: "t",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Gold Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/gold-statistics-and-information",
+      },
+      {
+        country: "Australia",
+        value: 290,
+        unit: "t",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Gold Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/gold-statistics-and-information",
+      },
+      {
+        country: "Russia",
+        value: 310,
+        unit: "t",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Gold Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/gold-statistics-and-information",
+      },
+    ],
   },
   {
     name: "Copper",
     category: "Metals",
-    majorCountries: ["Chile", "Peru", "DR Congo", "China", "United States"],
-    notes: "Chile and Peru dominate mine supply; refining is heavily concentrated in China.",
-  },
-  {
-    name: "Bauxite (Aluminum)",
-    category: "Industrial Minerals",
-    majorCountries: ["Australia", "Guinea", "China", "Brazil", "India"],
-    notes: "Guinea and Australia are key ore suppliers; China is a major processor.",
-  },
-  {
-    name: "Nickel",
-    category: "Battery Materials",
-    majorCountries: ["Indonesia", "Philippines", "Russia", "New Caledonia", "Australia"],
-    notes: "Indonesia is the key source for battery-grade nickel growth.",
+    notes: "Mine production values in million metric tons.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "Chile",
+        value: 5.3,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Copper Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/copper-statistics-and-information",
+      },
+      {
+        country: "Peru",
+        value: 2.6,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Copper Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/copper-statistics-and-information",
+      },
+      {
+        country: "DR Congo",
+        value: 3.3,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Copper Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/copper-statistics-and-information",
+      },
+    ],
   },
   {
     name: "Lithium",
     category: "Battery Materials",
-    majorCountries: ["Australia", "Chile", "China", "Argentina", "Brazil"],
-    notes: "Australia leads hard-rock output; Chile/Argentina are central in brine production.",
+    notes: "Mine production values in metric tons Li content.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "Australia",
+        value: 88000,
+        unit: "t Li",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Lithium Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/lithium-statistics-and-information",
+      },
+      {
+        country: "Chile",
+        value: 49000,
+        unit: "t Li",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Lithium Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/lithium-statistics-and-information",
+      },
+      {
+        country: "China",
+        value: 41000,
+        unit: "t Li",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Lithium Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/lithium-statistics-and-information",
+      },
+    ],
   },
   {
     name: "Cobalt",
     category: "Battery Materials",
-    majorCountries: ["DR Congo", "Indonesia", "Russia", "Australia", "Philippines"],
-    notes: "DR Congo remains the dominant mine source globally.",
+    notes: "Mine production values in metric tons Co content.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "DR Congo",
+        value: 220000,
+        unit: "t Co",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Cobalt Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/cobalt-statistics-and-information",
+      },
+      {
+        country: "Indonesia",
+        value: 28000,
+        unit: "t Co",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Cobalt Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/cobalt-statistics-and-information",
+      },
+      {
+        country: "Russia",
+        value: 8500,
+        unit: "t Co",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Cobalt Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/cobalt-statistics-and-information",
+      },
+    ],
   },
   {
-    name: "Rare earths",
-    category: "Industrial Minerals",
-    majorCountries: ["China", "United States", "Myanmar", "Australia", "Thailand"],
-    notes: "China holds strong positions in both mining and especially processing.",
-  },
-  {
-    name: "Uranium",
-    category: "Energy",
-    majorCountries: ["Kazakhstan", "Canada", "Namibia", "Australia", "Uzbekistan"],
-    notes: "Kazakhstan is the largest producer by a wide margin.",
-  },
-  {
-    name: "Crude oil",
-    category: "Energy",
-    majorCountries: ["United States", "Saudi Arabia", "Russia", "Canada", "Iraq"],
-    notes: "Top output is concentrated in North America and the Middle East.",
+    name: "Nickel",
+    category: "Battery Materials",
+    notes: "Mine production values in million metric tons.",
+    updatedAt: "2026-02-17",
+    dataPoints: [
+      {
+        country: "Indonesia",
+        value: 2.2,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Nickel Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/nickel-statistics-and-information",
+      },
+      {
+        country: "Philippines",
+        value: 0.4,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Nickel Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/nickel-statistics-and-information",
+      },
+      {
+        country: "New Caledonia",
+        value: 0.23,
+        unit: "Mt",
+        year: 2024,
+        metric: "mine-production",
+        sourceName: "USGS Nickel Statistics and Information",
+        sourceUrl:
+          "https://www.usgs.gov/centers/national-minerals-information-center/nickel-statistics-and-information",
+      },
+    ],
   },
 ];
 

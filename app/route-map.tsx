@@ -4,6 +4,7 @@ import { ComposableMap, Geographies, Geography, Line, Marker } from "react-simpl
 
 type RouteMapProps = {
   routes: { id: string; product: string; stops: string[] }[];
+  selectedRouteId: string | null;
 };
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -26,7 +27,7 @@ const portCoordinates: Record<string, [number, number]> = {
   Yokohama: [139.64, 35.44],
 };
 
-export default function RouteMap({ routes }: RouteMapProps) {
+export default function RouteMap({ routes, selectedRouteId }: RouteMapProps) {
   const filteredRoutes = routes
     .map((route) => ({
       ...route,
@@ -34,9 +35,14 @@ export default function RouteMap({ routes }: RouteMapProps) {
     }))
     .filter((route) => route.points.length > 1);
 
+  const selectedRoute =
+    selectedRouteId === null ? null : filteredRoutes.find((route) => route.id === selectedRouteId) ?? null;
+
   const uniquePorts = Array.from(
     new Set(filteredRoutes.flatMap((route) => route.stops).filter((stop) => portCoordinates[stop]))
   );
+
+  const highlightedPorts = selectedRoute ? selectedRoute.stops : uniquePorts;
 
   return (
     <div
@@ -61,26 +67,33 @@ export default function RouteMap({ routes }: RouteMapProps) {
           }
         </Geographies>
 
-        {filteredRoutes.map((route, index) =>
-          route.points.slice(1).map((end, i) => {
+        {filteredRoutes.map((route, index) => {
+          const isSelected = selectedRoute === null || route.id === selectedRoute.id;
+
+          return route.points.slice(1).map((end, i) => {
             const start = route.points[i];
             return (
               <Line
                 key={`${route.id}-${i}`}
                 from={start}
                 to={end}
-                stroke="#7fd1ff"
-                strokeWidth={1.2 + (index % 3) * 0.4}
+                stroke={isSelected ? "#7fd1ff" : "#5b84b5"}
+                strokeWidth={isSelected ? 1.8 + (index % 2) * 0.5 : 1}
                 strokeLinecap="round"
-                strokeOpacity={0.6 + (index % 3) * 0.1}
+                strokeOpacity={isSelected ? 0.82 : 0.2}
               />
             );
-          })
-        )}
+          });
+        })}
 
-        {uniquePorts.map((port) => (
+        {highlightedPorts.map((port) => (
           <Marker key={port} coordinates={portCoordinates[port]}>
-            <circle r={2.4} fill="#ffe28a" stroke="#f4b42c" strokeWidth={0.6} />
+            <circle
+              r={selectedRoute ? 2.8 : 2.4}
+              fill="#ffe28a"
+              stroke="#f4b42c"
+              strokeWidth={0.7}
+            />
           </Marker>
         ))}
       </ComposableMap>
@@ -90,7 +103,7 @@ export default function RouteMap({ routes }: RouteMapProps) {
           Routes: <strong>{filteredRoutes.length}</strong>
         </span>
         <span>
-          Ports: <strong>{uniquePorts.length}</strong>
+          Ports: <strong>{highlightedPorts.length}</strong>
         </span>
       </div>
     </div>
