@@ -1,4 +1,4 @@
-import { Card, Container, Pill } from "./components";
+import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import { roadmapFocusAreas } from "../lib/roadmap";
 
 const majorPorts = [
@@ -39,6 +39,30 @@ export default function HomePage() {
             </li>
           ))}
         </ol>
+      </Card>
+
+      <Card
+        title="Program snapshot"
+        subtitle="Reusable metric cards powered by design-system primitives for compact mobile and expanded desktop layouts."
+      >
+        <StatGrid>
+          <StatCard
+            label="Milestone in focus"
+            value="Global map foundation"
+            hint="Priority A then B in-progress"
+          />
+          <StatCard label="Seed ports mapped" value="4" hint="Shanghai, Singapore, Rotterdam, LA" />
+          <StatCard
+            label="Sample shipping routes"
+            value="4"
+            hint="Trans-Pacific and Europe corridors"
+          />
+          <StatCard
+            label="Mobile-first layout"
+            value="Enabled"
+            hint="1-column mobile, 2-column desktop"
+          />
+        </StatGrid>
       </Card>
 
       <Card

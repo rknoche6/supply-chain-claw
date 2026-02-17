@@ -183,6 +183,37 @@ p {
   font-weight: 600;
 }
 
+.statGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.statCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(17, 26, 51, 0.8);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.statLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.statHint {
+  font-size: var(--text-sm);
+}
+
 .gridTwo {
   display: grid;
   grid-template-columns: 1fr;
@@ -201,6 +232,10 @@ li {
 @media (min-width: 720px) {
   .container {
     padding: var(--space-6) var(--space-5);
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .gridTwo {
