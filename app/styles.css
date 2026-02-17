@@ -14,13 +14,17 @@ body {
 }
 
 .container {
-  max-width: 920px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
 }
 
 h1 {
   margin-bottom: 0.6rem;
+}
+
+h3 {
+  margin-bottom: 0.55rem;
 }
 
 .card {
@@ -31,14 +35,60 @@ h1 {
   background: #171c33;
 }
 
-.mapPlaceholder {
-  height: 260px;
-  border-radius: 10px;
-  border: 1px dashed #6070b8;
-  display: grid;
-  place-items: center;
-  color: #b7c2ff;
-  background: linear-gradient(145deg, #12182f 0%, #1a2142 100%);
+.sectionIntro {
+  margin-top: 0;
+  color: #c6d0ff;
 }
 
-li { margin: 0.35rem 0; }
+.mapFrame {
+  border: 1px solid #3d4d8b;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #11172d;
+}
+
+.mapFrame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ocean {
+  fill: #0f1a35;
+}
+
+.continent {
+  fill: #213862;
+  stroke: #4269a7;
+  stroke-width: 2;
+}
+
+.route {
+  fill: none;
+  stroke: #6fc4ff;
+  stroke-width: 3;
+  stroke-dasharray: 8 7;
+}
+
+.port {
+  fill: #ffe38b;
+  stroke: #f7b42c;
+  stroke-width: 2;
+}
+
+.label {
+  fill: #e5ecff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.gridTwo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
