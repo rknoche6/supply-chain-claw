@@ -28,3 +28,4 @@ Track how goods move across:
 4. Add compare view (`/compare`) for country-vs-country and material-vs-material analysis.
 5. Add methodology page (`/methodology`) with sources, update cadence, and confidence rules.
 6. Continue expanding raw-material and broader datasets with source-cited numeric records.
+7. Add a separate fun page with a 20-questions-style guessing game (`/games/20-questions`) without impacting explorer focus.

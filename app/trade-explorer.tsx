@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card, SectionHeader, StatCard, StatGrid } from "./components";
+import { toCountrySlug } from "../lib/countries";
 import { categories, tradeFlows } from "../lib/trade-data";
 import RouteMap from "./route-map";
 
@@ -359,6 +361,12 @@ export default function TradeExplorer() {
               <p className="statHint">matching flows</p>
             </article>
           </div>
+
+          <p className="sectionIntro">
+            <Link href={`/countries/${toCountrySlug(countrySpotlight.name)}`}>
+              Open full country detail →
+            </Link>
+          </p>
 
           <div>
             <p className="statLabel">Products in spotlight</p>
