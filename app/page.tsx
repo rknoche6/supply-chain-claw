@@ -1,3 +1,4 @@
+import { Card, Container, Pill } from "./components";
 import { roadmapFocusAreas } from "../lib/roadmap";
 
 const majorPorts = [
@@ -14,32 +15,36 @@ const sampleRoutes = [
   "Kaohsiung → Long Beach",
 ];
 
+const roadmapStatusByIndex = ["Now", "Next", "Planned", "Planned"] as const;
+
 export default function HomePage() {
   return (
-    <main className="container">
-      <h1>Supply Chain Claw</h1>
-      <p>
-        A growing open project to map how goods move from raw materials to finished products. This
-        phase now includes a visual global network foundation with example routes and major port
-        hubs.
-      </p>
+    <Container>
+      <header className="pageHeader">
+        <Pill tone="primary">Phase A · Design system foundation</Pill>
+        <h1>Supply Chain Claw</h1>
+        <p>
+          A growing open project to map how goods move from raw materials to finished products. This
+          phase now includes a visual global network foundation with example routes and major port
+          hubs.
+        </p>
+      </header>
 
-      <section className="card">
-        <h2>Roadmap</h2>
-        <ol>
-          {roadmapFocusAreas.map((item) => (
-            <li key={item}>{item}</li>
+      <Card title="Roadmap" subtitle="Priority-ordered milestones with current focus status.">
+        <ol className="roadmapList">
+          {roadmapFocusAreas.map((item, index) => (
+            <li key={item} className="roadmapItem">
+              <span>{item}</span>
+              <Pill tone={index === 0 ? "success" : "neutral"}>{roadmapStatusByIndex[index]}</Pill>
+            </li>
           ))}
         </ol>
-      </section>
+      </Card>
 
-      <section className="card">
-        <h2>Global network foundation</h2>
-        <p className="sectionIntro">
-          Seed map of key regions, major ports, and example shipping corridors. More countries and
-          product-level chains will be added in upcoming milestones.
-        </p>
-
+      <Card
+        title="Global network foundation"
+        subtitle="Seed map of key regions, major ports, and example shipping corridors. More countries and product-level chains will be added in upcoming milestones."
+      >
         <div className="mapFrame" aria-label="Global supply chain map">
           <svg viewBox="0 0 1000 470" role="img" aria-label="Stylized global shipping map">
             <rect x="0" y="0" width="1000" height="470" rx="16" className="ocean" />
@@ -95,7 +100,7 @@ export default function HomePage() {
             </ul>
           </div>
         </div>
-      </section>
-    </main>
+      </Card>
+    </Container>
   );
 }
