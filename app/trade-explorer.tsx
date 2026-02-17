@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, SectionHeader, StatCard, StatGrid } from "./components";
 import { categories, tradeFlows } from "../lib/trade-data";
 import RouteMap from "./route-map";
@@ -41,6 +41,8 @@ export default function TradeExplorer() {
   const [countryRole, setCountryRole] = useState<CountryRoleFilter>("any");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
+  const [pageSize, setPageSize] = useState(6);
+  const [page, setPage] = useState(1);
 
   const countries = useMemo(() => {
     const all = new Set<string>();
@@ -86,6 +88,16 @@ export default function TradeExplorer() {
 
     return items;
   }, [filtered, sortMode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, category, country, countryRole, sortMode, viewMode, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedFlows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = sortedFlows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const pageEnd = Math.min(currentPage * pageSize, sortedFlows.length);
+  const pagedFlows = sortedFlows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const topImporters = useMemo(() => {
     const counts = new Map<string, number>();
@@ -207,6 +219,8 @@ export default function TradeExplorer() {
               setCountry("All countries");
               setCountryRole("any");
               setSortMode("relevance");
+              setPageSize(6);
+              setPage(1);
             }}
           >
             Reset filters
@@ -354,7 +368,9 @@ export default function TradeExplorer() {
         subtitle="Focus on what matters now — products, routes, and country participation."
       >
         <div className="flowToolbar">
-          <p className="sectionIntro">{sortedFlows.length} results</p>
+          <p className="sectionIntro">
+            {sortedFlows.length} results · Showing {pageStart}-{pageEnd}
+          </p>
           <div className="flowToolbarControls">
             <label>
               Data view
@@ -380,12 +396,24 @@ export default function TradeExplorer() {
                 <option value="exporters">Most exporters</option>
               </select>
             </label>
+            <label>
+              Per page
+              <select
+                value={String(pageSize)}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                aria-label="Select page size"
+              >
+                <option value="6">6</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+              </select>
+            </label>
           </div>
         </div>
 
         {viewMode === "cards" ? (
           <div className="flowList">
-            {sortedFlows.map((flow) => (
+            {pagedFlows.map((flow) => (
               <article key={`${flow.category}-${flow.product}`} className="flowCard">
                 <p className="flowCategory">{flow.category}</p>
                 <h3>{flow.product}</h3>
@@ -427,7 +455,7 @@ export default function TradeExplorer() {
                 </tr>
               </thead>
               <tbody>
-                {sortedFlows.map((flow) => (
+                {pagedFlows.map((flow) => (
                   <tr key={`${flow.category}-${flow.product}`}>
                     <td>{flow.product}</td>
                     <td>{flow.category}</td>
@@ -453,6 +481,30 @@ export default function TradeExplorer() {
             {sortedFlows.length === 0 ? <p>No matching flows yet. Try a broader filter.</p> : null}
           </div>
         )}
+
+        {sortedFlows.length > 0 ? (
+          <div className="paginationControls" aria-label="Data pagination controls">
+            <button
+              type="button"
+              className="secondaryButton"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Previous
+            </button>
+            <p className="sectionIntro">
+              Page {currentPage} of {totalPages}
+            </p>
+            <button
+              type="button"
+              className="secondaryButton"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
       </Card>
     </>
   );
