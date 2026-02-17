@@ -26,6 +26,30 @@ type CategoryFilter = (typeof categories)[number];
 type ViewMode = "cards" | "table";
 type SortMode = "relevance" | "product" | "importers" | "exporters";
 
+type CountryTagListProps = {
+  countries: string[];
+  activeCountry: string;
+  onPickCountry: (countryName: string) => void;
+};
+
+function CountryTagList({ countries, activeCountry, onPickCountry }: CountryTagListProps) {
+  return (
+    <div className="countryTags" role="list">
+      {countries.map((countryName) => (
+        <button
+          key={countryName}
+          type="button"
+          className={`countryTagButton ${activeCountry === countryName ? "isActive" : ""}`}
+          onClick={() => onPickCountry(countryName)}
+          role="listitem"
+        >
+          {countryName}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
@@ -204,6 +228,46 @@ export default function TradeExplorer() {
             Reset filters
           </button>
         </div>
+
+        <div className="activeFilters" aria-live="polite">
+          <span className="activeFiltersLabel">Active filters</span>
+          <div className="activeFiltersList">
+            {query.trim().length > 0 ? (
+              <button type="button" className="activeFilterChip" onClick={() => setQuery("")}>
+                Search: {query.trim()} ×
+              </button>
+            ) : null}
+            {category !== "All" ? (
+              <button type="button" className="activeFilterChip" onClick={() => setCategory("All")}>
+                Category: {category} ×
+              </button>
+            ) : null}
+            {country !== "All countries" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setCountry("All countries")}
+              >
+                Country: {country} ×
+              </button>
+            ) : null}
+            {sortMode !== "relevance" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setSortMode("relevance")}
+              >
+                Sort: {sortMode} ×
+              </button>
+            ) : null}
+            {query.trim().length === 0 &&
+            category === "All" &&
+            country === "All countries" &&
+            sortMode === "relevance" ? (
+              <span className="sectionIntro">None</span>
+            ) : null}
+          </div>
+        </div>
       </Card>
 
       <Card
@@ -358,12 +422,26 @@ export default function TradeExplorer() {
                 <p className="flowCategory">{flow.category}</p>
                 <h3>{flow.product}</h3>
                 <p className="flowRoute">{flow.keyRoute}</p>
-                <p>
-                  <strong>Importers:</strong> {flow.topImporters.join(", ")}
-                </p>
-                <p>
-                  <strong>Exporters:</strong> {flow.topExporters.join(", ")}
-                </p>
+                <div>
+                  <p>
+                    <strong>Importers</strong>
+                  </p>
+                  <CountryTagList
+                    countries={flow.topImporters}
+                    activeCountry={country}
+                    onPickCountry={setCountry}
+                  />
+                </div>
+                <div>
+                  <p>
+                    <strong>Exporters</strong>
+                  </p>
+                  <CountryTagList
+                    countries={flow.topExporters}
+                    activeCountry={country}
+                    onPickCountry={setCountry}
+                  />
+                </div>
               </article>
             ))}
             {sortedFlows.length === 0 ? <p>No matching flows yet. Try a broader filter.</p> : null}
@@ -386,8 +464,20 @@ export default function TradeExplorer() {
                     <td>{flow.product}</td>
                     <td>{flow.category}</td>
                     <td>{flow.keyRoute}</td>
-                    <td>{flow.topImporters.join(", ")}</td>
-                    <td>{flow.topExporters.join(", ")}</td>
+                    <td>
+                      <CountryTagList
+                        countries={flow.topImporters}
+                        activeCountry={country}
+                        onPickCountry={setCountry}
+                      />
+                    </td>
+                    <td>
+                      <CountryTagList
+                        countries={flow.topExporters}
+                        activeCountry={country}
+                        onPickCountry={setCountry}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>

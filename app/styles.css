@@ -420,6 +420,59 @@ select {
   justify-content: flex-start;
 }
 
+.activeFilters {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.activeFiltersLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.activeFiltersList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.activeFilterChip {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: rgba(120, 200, 255, 0.14);
+  color: var(--color-text-primary);
+  padding: 0.35rem 0.65rem;
+  font-size: var(--text-xs);
+}
+
+.countryTags {
+  margin-top: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.countryTagButton {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(11, 16, 32, 0.65);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  padding: 0.2rem 0.55rem;
+}
+
+.countryTagButton:hover {
+  border-color: var(--color-border-strong);
+  background: rgba(120, 200, 255, 0.12);
+}
+
+.countryTagButton.isActive {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .secondaryButton {
   background: rgba(120, 200, 255, 0.12);
   color: var(--color-accent);
