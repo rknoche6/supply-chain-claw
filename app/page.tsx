@@ -1,4 +1,5 @@
 import { Container, Pill } from "./components";
+import RawMaterialsExplorer from "./raw-materials-explorer";
 import TradeExplorer from "./trade-explorer";
 
 export default function HomePage() {
@@ -13,6 +14,7 @@ export default function HomePage() {
         </p>
       </header>
 
+      <RawMaterialsExplorer />
       <TradeExplorer />
     </Container>
   );
