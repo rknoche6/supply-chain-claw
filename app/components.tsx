@@ -21,6 +21,18 @@ type StatCardProps = {
   hint?: string;
 };
 
+type SectionHeaderProps = {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+};
+
+type TokenSwatchProps = {
+  label: string;
+  token: string;
+  value: string;
+};
+
 export function Container({ children }: ContainerProps) {
   return <main className="container">{children}</main>;
 }
@@ -49,6 +61,34 @@ export function StatCard({ label, value, hint }: StatCardProps) {
       <p className="statLabel">{label}</p>
       <p className="statValue">{value}</p>
       {hint ? <p className="statHint">{hint}</p> : null}
+    </article>
+  );
+}
+
+export function SectionHeader({ eyebrow, title, description }: SectionHeaderProps) {
+  return (
+    <header className="sectionHeader">
+      {eyebrow ? <p className="sectionEyebrow">{eyebrow}</p> : null}
+      <h2>{title}</h2>
+      {description ? <p className="sectionIntro">{description}</p> : null}
+    </header>
+  );
+}
+
+export function TokenSwatch({ label, token, value }: TokenSwatchProps) {
+  return (
+    <article className="tokenSwatch">
+      <span
+        className="swatchChip"
+        style={{ backgroundColor: `var(${token})` }}
+        aria-hidden="true"
+      />
+      <div>
+        <p className="swatchLabel">{label}</p>
+        <p className="swatchMeta">
+          {token} · {value}
+        </p>
+      </div>
     </article>
   );
 }

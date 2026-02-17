@@ -1,4 +1,13 @@
-import { Card, Container, Pill, StatCard, StatGrid } from "./components";
+import {
+  Card,
+  Container,
+  Pill,
+  SectionHeader,
+  StatCard,
+  StatGrid,
+  TokenSwatch,
+} from "./components";
+import { colorRoleTokens, spacingScale, typographyScale } from "../lib/design-system";
 import { roadmapFocusAreas } from "../lib/roadmap";
 
 const majorPorts = [
@@ -29,6 +38,57 @@ export default function HomePage() {
           hubs.
         </p>
       </header>
+
+      <Card>
+        <SectionHeader
+          eyebrow="Design system"
+          title="Reusable tokens and primitives"
+          description="Foundation layer for consistent UI across milestones: color roles, typography scale, spacing tokens, and responsive card/list patterns."
+        />
+
+        <div className="designGrid">
+          <section>
+            <h3>Color roles</h3>
+            <div className="tokenGrid">
+              {colorRoleTokens.map((token) => (
+                <TokenSwatch
+                  key={token.token}
+                  label={token.role}
+                  token={token.token}
+                  value={token.value}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h3>Typography scale</h3>
+            <ul className="typeList">
+              {typographyScale.map((type) => (
+                <li key={type.token} className="typeItem">
+                  <span className="pill">{type.label}</span>
+                  <div>
+                    <p className="typeSample" style={{ fontSize: `var(${type.token})` }}>
+                      {type.sample}
+                    </p>
+                    <p className="swatchMeta">{type.token}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <h3>Spacing scale</h3>
+            <div className="spacingBars" aria-label="Spacing token preview">
+              {spacingScale.map((space) => (
+                <div key={space} className="spaceRow">
+                  <span>{space}</span>
+                  <span className="spaceBar" style={{ width: `calc(var(${space}) * 6)` }} />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </Card>
 
       <Card title="Roadmap" subtitle="Priority-ordered milestones with current focus status.">
         <ol className="roadmapList">
