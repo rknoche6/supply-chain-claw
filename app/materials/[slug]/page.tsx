@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../../components";
-import { getMaterialBySlug, rawMaterials } from "../../../lib/raw-materials";
+import {
+  getDataPointConfidence,
+  getFreshnessLabel,
+  getMaterialBySlug,
+  rawMaterials,
+} from "../../../lib/raw-materials";
 
 type MaterialPageProps = {
   params: {
@@ -25,6 +30,13 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
   const availableYears = Array.from(new Set(material.dataPoints.map((point) => point.year))).sort(
     (a, b) => b - a
   );
+  const highConfidenceCount = material.dataPoints.filter(
+    (point) => getDataPointConfidence(point) === "High"
+  ).length;
+  const currentOrRecentCount = material.dataPoints.filter((point) => {
+    const freshness = getFreshnessLabel(point.year, material.updatedAt);
+    return freshness === "Current" || freshness === "Recent";
+  }).length;
 
   return (
     <Container>
@@ -48,6 +60,8 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
           <StatCard label="Category" value={material.category} />
           <StatCard label="Records" value={String(material.dataPoints.length)} />
           <StatCard label="Years covered" value={availableYears.join(", ")} />
+          <StatCard label="High-confidence records" value={String(highConfidenceCount)} />
+          <StatCard label="Current/recent records" value={String(currentOrRecentCount)} />
           <StatCard label="Last updated" value={material.updatedAt} />
         </StatGrid>
 
@@ -79,25 +93,34 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
                 <th>Metric</th>
                 <th>Value</th>
                 <th>Year</th>
+                <th>Freshness</th>
+                <th>Confidence</th>
                 <th>Source</th>
               </tr>
             </thead>
             <tbody>
-              {sortedPoints.map((point) => (
-                <tr key={`${material.slug}-${point.country}-${point.metric}-${point.year}`}>
-                  <td>{point.country}</td>
-                  <td>{point.metric}</td>
-                  <td>
-                    {point.value.toLocaleString()} {point.unit}
-                  </td>
-                  <td>{point.year}</td>
-                  <td>
-                    <a href={point.sourceUrl} target="_blank" rel="noreferrer">
-                      {point.sourceName}
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {sortedPoints.map((point) => {
+                const freshness = getFreshnessLabel(point.year, material.updatedAt);
+                const confidence = getDataPointConfidence(point);
+
+                return (
+                  <tr key={`${material.slug}-${point.country}-${point.metric}-${point.year}`}>
+                    <td>{point.country}</td>
+                    <td>{point.metric}</td>
+                    <td>
+                      {point.value.toLocaleString()} {point.unit}
+                    </td>
+                    <td>{point.year}</td>
+                    <td>{freshness}</td>
+                    <td>{confidence}</td>
+                    <td>
+                      <a href={point.sourceUrl} target="_blank" rel="noreferrer">
+                        {point.sourceName}
+                      </a>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

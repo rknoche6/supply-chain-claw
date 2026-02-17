@@ -19,6 +19,8 @@ export type RawMaterialItem = {
   dataPoints: DataPoint[];
 };
 
+export type ConfidenceLevel = "High" | "Medium" | "Low";
+
 export const rawMaterials: RawMaterialItem[] = [
   {
     name: "Iron ore",
@@ -266,4 +268,34 @@ export const rawMaterialCategories = [
 
 export function getMaterialBySlug(slug: string) {
   return rawMaterials.find((item) => item.slug === slug) ?? null;
+}
+
+export function getDataPointConfidence(point: DataPoint): ConfidenceLevel {
+  const hasRequiredFields =
+    Number.isFinite(point.value) &&
+    point.unit.trim().length > 0 &&
+    Number.isInteger(point.year) &&
+    point.sourceName.trim().length > 0 &&
+    point.sourceUrl.trim().length > 0;
+
+  if (!hasRequiredFields) {
+    return "Low";
+  }
+
+  const hasOfficialSource = /usgs|world bank|oecd|imf|un/i.test(point.sourceName);
+  if (hasOfficialSource) {
+    return "High";
+  }
+
+  return "Medium";
+}
+
+export function getFreshnessLabel(year: number, updatedAt: string): string {
+  const updatedYear = Number.parseInt(updatedAt.slice(0, 4), 10);
+  const baselineYear = Number.isNaN(updatedYear) ? new Date().getUTCFullYear() : updatedYear;
+  const age = baselineYear - year;
+
+  if (age <= 1) return "Current";
+  if (age <= 3) return "Recent";
+  return "Stale";
 }
