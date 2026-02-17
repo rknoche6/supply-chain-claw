@@ -25,6 +25,7 @@ const portCoordinates: Record<string, { x: number; y: number }> = {
 type CategoryFilter = (typeof categories)[number];
 type ViewMode = "cards" | "table";
 type SortMode = "relevance" | "product" | "importers" | "exporters";
+type CountryRoleFilter = "any" | "importer" | "exporter";
 
 type CountryTagListProps = {
   countries: string[];
@@ -54,6 +55,7 @@ export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
   const [country, setCountry] = useState("All countries");
+  const [countryRole, setCountryRole] = useState<CountryRoleFilter>("any");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
 
@@ -72,8 +74,8 @@ export default function TradeExplorer() {
       const byCategory = category === "All" || flow.category === category;
       const byCountry =
         country === "All countries" ||
-        flow.topImporters.includes(country) ||
-        flow.topExporters.includes(country);
+        (countryRole !== "exporter" && flow.topImporters.includes(country)) ||
+        (countryRole !== "importer" && flow.topExporters.includes(country));
       const byQuery =
         q.length === 0 ||
         flow.product.toLowerCase().includes(q) ||
@@ -82,7 +84,7 @@ export default function TradeExplorer() {
         flow.topExporters.some((item) => item.toLowerCase().includes(q));
       return byCategory && byCountry && byQuery;
     });
-  }, [category, country, query]);
+  }, [category, country, countryRole, query]);
 
   const sortedFlows = useMemo(() => {
     const items = [...filtered];
@@ -212,7 +214,25 @@ export default function TradeExplorer() {
               ))}
             </select>
           </label>
+
+          <label>
+            Country role
+            <select
+              value={countryRole}
+              onChange={(e) => setCountryRole(e.target.value as CountryRoleFilter)}
+            >
+              <option value="any">Any role</option>
+              <option value="importer">Importer only</option>
+              <option value="exporter">Exporter only</option>
+            </select>
+          </label>
         </div>
+
+        {country === "All countries" && countryRole !== "any" ? (
+          <p className="sectionIntro">
+            Country role filter applies after selecting a specific country.
+          </p>
+        ) : null}
 
         <div className="filterActions">
           <button
@@ -222,6 +242,7 @@ export default function TradeExplorer() {
               setQuery("");
               setCategory("All");
               setCountry("All countries");
+              setCountryRole("any");
               setSortMode("relevance");
             }}
           >
@@ -251,6 +272,15 @@ export default function TradeExplorer() {
                 Country: {country} ×
               </button>
             ) : null}
+            {countryRole !== "any" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setCountryRole("any")}
+              >
+                Role: {countryRole} ×
+              </button>
+            ) : null}
             {sortMode !== "relevance" ? (
               <button
                 type="button"
@@ -263,6 +293,7 @@ export default function TradeExplorer() {
             {query.trim().length === 0 &&
             category === "All" &&
             country === "All countries" &&
+            countryRole === "any" &&
             sortMode === "relevance" ? (
               <span className="sectionIntro">None</span>
             ) : null}
