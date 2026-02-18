@@ -251,6 +251,65 @@ export default function TradeExplorer() {
       ? null
       : (mappedRoutes.find((route) => route.id === selectedRouteId) ?? null);
 
+  const primaryExchangeLanes = useMemo(() => {
+    const laneCounts = new Map<
+      string,
+      {
+        exporter: string;
+        importer: string;
+        exporterSlug: string;
+        importerSlug: string;
+        compareHref: string | null;
+        flowCount: number;
+        categories: Set<string>;
+        products: string[];
+      }
+    >();
+
+    for (const flow of filtered) {
+      const exporter = flow.topExporters[0] ?? null;
+      const importer = flow.topImporters[0] ?? null;
+
+      if (!exporter || !importer) {
+        continue;
+      }
+
+      const exporterSlug = toCountrySlug(exporter);
+      const importerSlug = toCountrySlug(importer);
+      const hasCompareCountries =
+        exporterSlug !== importerSlug &&
+        countrySlugSet.has(exporterSlug) &&
+        countrySlugSet.has(importerSlug);
+      const laneId = `${exporter}→${importer}`;
+      const existing = laneCounts.get(laneId) ?? {
+        exporter,
+        importer,
+        exporterSlug,
+        importerSlug,
+        compareHref: hasCompareCountries
+          ? `/compare?leftCountry=${exporterSlug}&rightCountry=${importerSlug}`
+          : null,
+        flowCount: 0,
+        categories: new Set<string>(),
+        products: [],
+      };
+
+      existing.flowCount += 1;
+      existing.categories.add(flow.category);
+      existing.products.push(flow.product);
+      laneCounts.set(laneId, existing);
+    }
+
+    return Array.from(laneCounts.values())
+      .map((lane) => ({
+        ...lane,
+        categories: Array.from(lane.categories).sort((a, b) => a.localeCompare(b)),
+        products: Array.from(new Set(lane.products)).sort((a, b) => a.localeCompare(b)),
+      }))
+      .sort((a, b) => b.flowCount - a.flowCount || a.exporter.localeCompare(b.exporter))
+      .slice(0, 10);
+  }, [countrySlugSet, filtered]);
+
   return (
     <>
       <Card>
@@ -587,6 +646,62 @@ export default function TradeExplorer() {
           </>
         ) : (
           <p className="sectionIntro">No mappable routes for the current filters.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Primary exchange lanes"
+        subtitle="Most repeated exporter → importer country pairs across the active filtered routes, with quick compare drilldowns."
+      >
+        {primaryExchangeLanes.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Exporter</th>
+                  <th>Importer</th>
+                  <th>Matched flows</th>
+                  <th>Categories</th>
+                  <th>Sample products</th>
+                  <th>Drilldowns</th>
+                </tr>
+              </thead>
+              <tbody>
+                {primaryExchangeLanes.map((lane) => (
+                  <tr key={`lane-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <td>
+                      {countrySlugSet.has(lane.exporterSlug) ? (
+                        <Link href={`/countries/${lane.exporterSlug}`}>{lane.exporter}</Link>
+                      ) : (
+                        lane.exporter
+                      )}
+                    </td>
+                    <td>
+                      {countrySlugSet.has(lane.importerSlug) ? (
+                        <Link href={`/countries/${lane.importerSlug}`}>{lane.importer}</Link>
+                      ) : (
+                        lane.importer
+                      )}
+                    </td>
+                    <td>{lane.flowCount}</td>
+                    <td>{lane.categories.join(", ")}</td>
+                    <td>{lane.products.slice(0, 3).join(", ")}</td>
+                    <td>
+                      {lane.compareHref ? (
+                        <Link href={lane.compareHref}>
+                          Compare {lane.exporter} vs {lane.importer}
+                        </Link>
+                      ) : (
+                        "Compare unavailable"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No exchange lanes available for the current filters.</p>
         )}
       </Card>
 
