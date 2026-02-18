@@ -20,6 +20,14 @@ function pickSlugFromQuery(
   return validSlugs.includes(candidate) ? candidate : fallback;
 }
 
+function pickBooleanFromQuery(candidate: string | null, fallback: boolean): boolean {
+  if (candidate === null) {
+    return fallback;
+  }
+
+  return candidate === "1" || candidate.toLowerCase() === "true";
+}
+
 function getMaterialStats(slug: string) {
   const material = rawMaterials.find((item) => item.slug === slug);
   if (!material) return null;
@@ -238,6 +246,7 @@ export default function ComparePage() {
     setRightMaterialSlug(
       pickSlugFromQuery(params.get("rightMaterial"), materialSlugs, defaultRightMaterial)
     );
+    setHighConfidenceOnly(pickBooleanFromQuery(params.get("highConfidenceOnly"), false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -252,20 +261,30 @@ export default function ComparePage() {
     params.set("leftMaterial", leftMaterialSlug);
     params.set("rightMaterial", rightMaterialSlug);
 
+    if (highConfidenceOnly) {
+      params.set("highConfidenceOnly", "1");
+    } else {
+      params.delete("highConfidenceOnly");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", nextUrl);
-  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug]);
+  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug, highConfidenceOnly]);
 
-  const compareParams = useMemo(
-    () =>
-      new URLSearchParams({
-        leftCountry: leftCountrySlug,
-        rightCountry: rightCountrySlug,
-        leftMaterial: leftMaterialSlug,
-        rightMaterial: rightMaterialSlug,
-      }),
-    [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug]
-  );
+  const compareParams = useMemo(() => {
+    const params = new URLSearchParams({
+      leftCountry: leftCountrySlug,
+      rightCountry: rightCountrySlug,
+      leftMaterial: leftMaterialSlug,
+      rightMaterial: rightMaterialSlug,
+    });
+
+    if (highConfidenceOnly) {
+      params.set("highConfidenceOnly", "1");
+    }
+
+    return params;
+  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug, highConfidenceOnly]);
 
   const comparePath = `/compare?${compareParams.toString()}`;
 
