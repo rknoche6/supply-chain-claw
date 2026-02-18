@@ -30,6 +30,34 @@ const compareShortcut =
 
 const countrySlugByName = new Map(countryProfiles.map((country) => [country.name, country.slug]));
 
+const latestReferenceYear = allDataPoints.reduce(
+  (maxYear, point) => Math.max(maxYear, point.year),
+  0
+);
+
+const recentHighConfidenceRows = rawMaterials
+  .flatMap((material) =>
+    material.dataPoints
+      .filter(
+        (point) => getDataPointConfidence(point) === "High" && point.year >= latestReferenceYear - 1
+      )
+      .map((point) => ({
+        materialName: material.name,
+        materialSlug: material.slug,
+        country: point.country,
+        countrySlug: countrySlugByName.get(point.country) ?? null,
+        value: point.value,
+        unit: point.unit,
+        year: point.year,
+        sourceName: point.sourceName,
+        sourceUrl: point.sourceUrl,
+      }))
+  )
+  .sort(
+    (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
+  )
+  .slice(0, 10);
+
 const topImporterRows = Array.from(
   tradeFlows.reduce((map, flow) => {
     flow.topImporters.forEach((countryName) => {
@@ -161,6 +189,50 @@ export default function HomePage() {
             <span>20 Questions game</span>
             <span>Optional fun page</span>
           </Link>
+        </div>
+      </Card>
+
+      <Card
+        title="Recent high-confidence records"
+        subtitle="Latest numeric rows with explicit unit/year and direct citations for fast drilldown."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Country</th>
+                <th>Value</th>
+                <th>Year</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentHighConfidenceRows.map((row) => (
+                <tr key={`${row.materialSlug}-${row.country}-${row.year}-${row.value}`}>
+                  <td>
+                    <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                  </td>
+                  <td>
+                    {row.countrySlug ? (
+                      <Link href={`/countries/${row.countrySlug}`}>{row.country}</Link>
+                    ) : (
+                      row.country
+                    )}
+                  </td>
+                  <td>
+                    {row.value.toLocaleString()} {row.unit}
+                  </td>
+                  <td>{row.year}</td>
+                  <td>
+                    <a href={row.sourceUrl} target="_blank" rel="noreferrer">
+                      {row.sourceName}
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
 
