@@ -65,6 +65,18 @@ function getMaterialMatch(flowProduct: string) {
   return { quality: "none" as const, material: null };
 }
 
+function getLaneCoverageStatus(coverageShare: number) {
+  if (coverageShare >= 100) {
+    return "Full";
+  }
+
+  if (coverageShare > 0) {
+    return "Partial";
+  }
+
+  return "Gap";
+}
+
 export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
@@ -879,19 +891,46 @@ export default function TradeExplorer() {
         {mappedRoutes.length > 0 ? (
           <>
             <div className="routePicker" role="list" aria-label="Filtered route options">
-              {mappedRoutes.map((route) => (
-                <button
-                  key={route.id}
-                  type="button"
-                  role="listitem"
-                  className={`routePickerButton ${selectedRouteId === route.id ? "isActive" : ""}`}
-                  onClick={() => setSelectedRouteId(route.id)}
-                >
-                  <span>{route.product}</span>
-                  <span>{route.stops.join(" → ")}</span>
-                </button>
-              ))}
+              {mappedRoutes.map((route) => {
+                const laneCoverage =
+                  route.topExporter && route.topImporter
+                    ? primaryExchangeLanes.find(
+                        (lane) =>
+                          lane.exporter === route.topExporter && lane.importer === route.topImporter
+                      )
+                    : null;
+                const laneCoverageLabel = laneCoverage
+                  ? `${laneCoverage.materialCoverageShare.toFixed(0)}% ${getLaneCoverageStatus(laneCoverage.materialCoverageShare)}`
+                  : "Not ranked";
+                const routeMaterialLabel =
+                  route.materialMatchQuality === "exact"
+                    ? "Exact material match"
+                    : route.materialMatchQuality === "partial"
+                      ? "Partial material match"
+                      : "No direct material match";
+
+                return (
+                  <button
+                    key={route.id}
+                    type="button"
+                    role="listitem"
+                    className={`routePickerButton ${selectedRouteId === route.id ? "isActive" : ""}`}
+                    onClick={() => setSelectedRouteId(route.id)}
+                  >
+                    <span>{route.product}</span>
+                    <span>{route.stops.join(" → ")}</span>
+                    <span>
+                      Lane material coverage: {laneCoverageLabel} · Route evidence:{" "}
+                      {routeMaterialLabel}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="sectionIntro">
+              Route evidence legend: Full = 100% of lane flows linked to material datasets, Partial
+              = some linked flows, Gap = no linked flows yet.
+            </p>
 
             {selectedRoute ? (
               <>
