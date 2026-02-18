@@ -1009,6 +1009,34 @@ export default function TradeExplorer() {
                       </td>
                       <td>{row.totalCount}</td>
                       <td>
+                        <div className="filterActions" style={{ margin: 0 }}>
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            onClick={() => {
+                              setCountry(row.name);
+                              setCountryRole("importer");
+                              setSortMode("relevance");
+                              setViewMode("cards");
+                              setPage(1);
+                            }}
+                          >
+                            Filter as importer
+                          </button>
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            onClick={() => {
+                              setCountry(row.name);
+                              setCountryRole("exporter");
+                              setSortMode("relevance");
+                              setViewMode("cards");
+                              setPage(1);
+                            }}
+                          >
+                            Filter as exporter
+                          </button>
+                        </div>
                         {row.hasDetailPage ? (
                           <>
                             <Link href={`/countries/${row.slug}`}>Country</Link>
@@ -1128,6 +1156,47 @@ export default function TradeExplorer() {
               <strong>{exchangeCoverageSnapshot.partialCoverage}</strong> partial lanes ·{" "}
               <strong>{exchangeCoverageSnapshot.noCoverage}</strong> gap lanes.
             </p>
+            <div className="filterActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => {
+                  setLaneCoverageFilter("full");
+                  setMaterialLinkMode("linked");
+                  setSortMode("relevance");
+                  setViewMode("cards");
+                  setPage(1);
+                }}
+              >
+                Focus full-evidence lanes ({exchangeCoverageSnapshot.fullCoverage})
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => {
+                  setLaneCoverageFilter("partial");
+                  setMaterialLinkMode("linked");
+                  setSortMode("relevance");
+                  setViewMode("cards");
+                  setPage(1);
+                }}
+              >
+                Review partial-evidence lanes ({exchangeCoverageSnapshot.partialCoverage})
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => {
+                  setLaneCoverageFilter("gap");
+                  setMaterialLinkMode("unlinked");
+                  setSortMode("relevance");
+                  setViewMode("cards");
+                  setPage(1);
+                }}
+              >
+                Audit gap lanes ({exchangeCoverageSnapshot.noCoverage})
+              </button>
+            </div>
 
             {selectedRoute ? (
               <>
