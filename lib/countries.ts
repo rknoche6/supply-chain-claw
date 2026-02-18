@@ -1,3 +1,4 @@
+import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "./raw-materials";
 import { tradeFlows } from "./trade-data";
 
 export type CountryRoleBreakdown = {
@@ -19,12 +20,27 @@ export type CountryProductRecord = {
   route: string;
 };
 
+export type CountryMaterialRecord = {
+  materialName: string;
+  materialSlug: string;
+  category: string;
+  metric: string;
+  value: number;
+  unit: string;
+  year: number;
+  sourceName: string;
+  sourceUrl: string;
+  confidence: string;
+  freshness: string;
+};
+
 export type CountryProfile = {
   slug: string;
   name: string;
   roleBreakdown: CountryRoleBreakdown;
   topPartners: CountryPartner[];
   products: CountryProductRecord[];
+  materialRecords: CountryMaterialRecord[];
 };
 
 export function toCountrySlug(value: string) {
@@ -42,6 +58,10 @@ function buildCountryProfiles() {
   for (const flow of tradeFlows) {
     flow.topImporters.forEach((country) => allCountries.add(country));
     flow.topExporters.forEach((country) => allCountries.add(country));
+  }
+
+  for (const material of rawMaterials) {
+    material.dataPoints.forEach((point) => allCountries.add(point.country));
   }
 
   return Array.from(allCountries)
@@ -94,6 +114,29 @@ function buildCountryProfiles() {
         })),
       ].sort((a, b) => a.product.localeCompare(b.product));
 
+      const materialRecords: CountryMaterialRecord[] = rawMaterials
+        .flatMap((material) =>
+          material.dataPoints
+            .filter((point) => point.country === countryName)
+            .map((point) => ({
+              materialName: material.name,
+              materialSlug: material.slug,
+              category: material.category,
+              metric: point.metric,
+              value: point.value,
+              unit: point.unit,
+              year: point.year,
+              sourceName: point.sourceName,
+              sourceUrl: point.sourceUrl,
+              confidence: getDataPointConfidence(point),
+              freshness: getFreshnessLabel(point.year, material.updatedAt),
+            }))
+        )
+        .sort(
+          (a, b) =>
+            b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
+        );
+
       return {
         slug: toCountrySlug(countryName),
         name: countryName,
@@ -105,6 +148,7 @@ function buildCountryProfiles() {
         },
         topPartners,
         products,
+        materialRecords,
       };
     });
 }

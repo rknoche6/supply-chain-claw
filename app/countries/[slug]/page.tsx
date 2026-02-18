@@ -42,6 +42,13 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           <StatCard label="Exporter roles" value={String(country.roleBreakdown.exporterCount)} />
           <StatCard label="Unique products" value={String(country.roleBreakdown.totalFlows)} />
           <StatCard label="Top partners listed" value={String(country.topPartners.length)} />
+          <StatCard label="Material records" value={String(country.materialRecords.length)} />
+          <StatCard
+            label="High-confidence material records"
+            value={String(
+              country.materialRecords.filter((record) => record.confidence === "High").length
+            )}
+          />
         </StatGrid>
       </Card>
 
@@ -74,6 +81,56 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           </div>
         ) : (
           <p className="sectionIntro">No partner data available for this country yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Source-cited material records"
+        subtitle="Exact numeric records linked to this country with units, year, freshness, and confidence."
+      >
+        {country.materialRecords.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Category</th>
+                  <th>Metric</th>
+                  <th>Value</th>
+                  <th>Year</th>
+                  <th>Freshness</th>
+                  <th>Confidence</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {country.materialRecords.map((record) => (
+                  <tr
+                    key={`${country.slug}-${record.materialSlug}-${record.metric}-${record.year}-${record.value}`}
+                  >
+                    <td>
+                      <Link href={`/materials/${record.materialSlug}`}>{record.materialName}</Link>
+                    </td>
+                    <td>{record.category}</td>
+                    <td>{record.metric}</td>
+                    <td>
+                      {record.value.toLocaleString()} {record.unit}
+                    </td>
+                    <td>{record.year}</td>
+                    <td>{record.freshness}</td>
+                    <td>{record.confidence}</td>
+                    <td>
+                      <a href={record.sourceUrl} target="_blank" rel="noreferrer">
+                        {record.sourceName}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No source-cited material records for this country yet.</p>
         )}
       </Card>
 
