@@ -13,20 +13,40 @@ type MaterialPageProps = {
   params: {
     slug: string;
   };
+  searchParams?: {
+    year?: string;
+    confidence?: string;
+    country?: string;
+  };
 };
 
 export function generateStaticParams() {
   return rawMaterials.map((item) => ({ slug: item.slug }));
 }
 
-export default function MaterialDetailPage({ params }: MaterialPageProps) {
+export default function MaterialDetailPage({ params, searchParams }: MaterialPageProps) {
   const material = getMaterialBySlug(params.slug);
 
   if (!material) {
     notFound();
   }
 
+  const selectedYear = searchParams?.year ?? "all";
+  const selectedConfidence = searchParams?.confidence ?? "all";
+  const countryQuery = (searchParams?.country ?? "").trim().toLowerCase();
+
+  const filteredPoints = material.dataPoints.filter((point) => {
+    const confidence = getDataPointConfidence(point);
+    const yearMatch = selectedYear === "all" || String(point.year) === selectedYear;
+    const confidenceMatch = selectedConfidence === "all" || confidence === selectedConfidence;
+    const countryMatch =
+      countryQuery.length === 0 || point.country.toLowerCase().includes(countryQuery);
+
+    return yearMatch && confidenceMatch && countryMatch;
+  });
+
   const sortedPoints = [...material.dataPoints].sort((a, b) => b.value - a.value);
+  const filteredSortedPoints = [...filteredPoints].sort((a, b) => b.value - a.value);
   const topPoint = sortedPoints[0];
   const totalValue = sortedPoints.reduce((sum, point) => sum + point.value, 0);
   const topThreeValue = sortedPoints.slice(0, 3).reduce((sum, point) => sum + point.value, 0);
@@ -194,6 +214,11 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
             </p>
             <p className="statHint">Higher values indicate tighter producer concentration.</p>
           </article>
+          <article className="statCard">
+            <p className="statLabel">Filtered country records</p>
+            <p className="statValue">{filteredPoints.length}</p>
+            <p className="statHint">Current table scope after year/confidence/country filters.</p>
+          </article>
         </div>
       </Card>
 
@@ -324,6 +349,51 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
         title="Country records"
         subtitle="Sorted by value for fast exporter concentration review."
       >
+        <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
+          <label>
+            Year
+            <select name="year" defaultValue={selectedYear}>
+              <option value="all">All years</option>
+              {availableYears.map((year) => (
+                <option key={`${material.slug}-filter-year-${year}`} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Confidence
+            <select name="confidence" defaultValue={selectedConfidence}>
+              <option value="all">All confidence levels</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </label>
+
+          <label>
+            Country search
+            <input
+              type="search"
+              name="country"
+              defaultValue={searchParams?.country ?? ""}
+              placeholder="Filter countries"
+            />
+          </label>
+
+          <button type="submit" className="secondaryButton">
+            Apply filters
+          </button>
+          <Link href={`/materials/${material.slug}`} className="secondaryButton" prefetch={false}>
+            Reset
+          </Link>
+        </form>
+
+        <p className="sectionIntro">
+          Showing {filteredSortedPoints.length} of {material.dataPoints.length} records.
+        </p>
+
         <div className="tableWrap">
           <table className="flowTable">
             <thead>
@@ -338,7 +408,7 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
               </tr>
             </thead>
             <tbody>
-              {sortedPoints.map((point) => {
+              {filteredSortedPoints.map((point) => {
                 const freshness = getFreshnessLabel(point.year, material.updatedAt);
                 const confidence = getDataPointConfidence(point);
                 const countrySlug = toCountrySlug(point.country);
@@ -371,6 +441,12 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
             </tbody>
           </table>
         </div>
+
+        {filteredSortedPoints.length === 0 ? (
+          <p className="sectionIntro">
+            No country records match the current filters. Try broader year/confidence settings.
+          </p>
+        ) : null}
       </Card>
     </Container>
   );
