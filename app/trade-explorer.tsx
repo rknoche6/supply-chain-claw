@@ -78,6 +78,40 @@ function getLaneCoverageStatus(coverageShare: number) {
   return "Gap";
 }
 
+function getExchangeHandoffStatus({
+  laneCoverageShare,
+  materialMatchQuality,
+}: {
+  laneCoverageShare: number;
+  materialMatchQuality: MaterialMatchQuality;
+}) {
+  if (laneCoverageShare >= 100 && materialMatchQuality === "exact") {
+    return {
+      label: "Execution-ready",
+      guidance: "Map lane and material evidence are both strong.",
+    };
+  }
+
+  if (laneCoverageShare >= 60 && materialMatchQuality !== "none") {
+    return {
+      label: "Validate before execution",
+      guidance: "Route is mostly covered; confirm partial or fuzzy links.",
+    };
+  }
+
+  if (laneCoverageShare > 0 || materialMatchQuality !== "none") {
+    return {
+      label: "Partial evidence",
+      guidance: "Use linked records, then close remaining product gaps.",
+    };
+  }
+
+  return {
+    label: "Data gap",
+    guidance: "No reliable handoff yet between map lane and materials.",
+  };
+}
+
 export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
@@ -624,6 +658,17 @@ export default function TradeExplorer() {
     return rank > 0 ? rank : null;
   }, [primaryExchangeLanes, selectedRouteLaneCoverage]);
 
+  const selectedRouteHandoffStatus = useMemo(() => {
+    if (!selectedRoute) {
+      return null;
+    }
+
+    return getExchangeHandoffStatus({
+      laneCoverageShare: selectedRouteLaneCoverage?.materialCoverageShare ?? 0,
+      materialMatchQuality: selectedRoute.materialMatchQuality,
+    });
+  }, [selectedRoute, selectedRouteLaneCoverage]);
+
   const primaryExchangeCoverageGaps = useMemo(() => {
     return [...primaryExchangeLanes]
       .sort(
@@ -1148,6 +1193,10 @@ export default function TradeExplorer() {
                   route.topExporter && route.topImporter
                     ? `${route.topExporter} (exporter) → ${route.topImporter} (importer)`
                     : "Primary exporter/importer pair not identified";
+                const handoffStatus = getExchangeHandoffStatus({
+                  laneCoverageShare: laneCoverage?.materialCoverageShare ?? 0,
+                  materialMatchQuality: route.materialMatchQuality,
+                });
 
                 return (
                   <button
@@ -1163,6 +1212,9 @@ export default function TradeExplorer() {
                     <span>
                       Lane material coverage: {laneCoverageLabel} · Route evidence:{" "}
                       {routeMaterialLabel}
+                    </span>
+                    <span>
+                      Handoff status: {handoffStatus.label} · {handoffStatus.guidance}
                     </span>
                   </button>
                 );
@@ -1300,6 +1352,13 @@ export default function TradeExplorer() {
                         </>
                       )}
                     </li>
+                    {selectedRouteHandoffStatus ? (
+                      <li>
+                        Map → material handoff status:{" "}
+                        <strong>{selectedRouteHandoffStatus.label}</strong>: {""}
+                        {selectedRouteHandoffStatus.guidance}
+                      </li>
+                    ) : null}
                     {selectedRouteLaneCoverage ? (
                       <>
                         <li>
