@@ -161,6 +161,23 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
     };
   }, [segments, selectedCountry]);
 
+  const selectedRouteExchangeSummary = useMemo(() => {
+    if (!selectedRoute || selectedRoute.stops.length < 2) {
+      return null;
+    }
+
+    const origin = selectedRoute.stops[0];
+    const destination = selectedRoute.stops[selectedRoute.stops.length - 1];
+    const transitStops = selectedRoute.stops.slice(1, -1);
+
+    return {
+      origin,
+      destination,
+      transitStops,
+      totalLegs: selectedRoute.stops.length - 1,
+    };
+  }, [selectedRoute]);
+
   return (
     <div
       className="mapFrame mapFrame--enhanced"
@@ -293,10 +310,30 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
+      {selectedRouteExchangeSummary ? (
+        <div className="mapRouteDetail" role="status" aria-live="polite">
+          <p>
+            <strong>Selected exchange direction</strong>
+          </p>
+          <p>
+            <strong>{selectedRouteExchangeSummary.origin}</strong> (origin handoff) →{" "}
+            <strong>{selectedRouteExchangeSummary.destination}</strong> (destination handoff)
+          </p>
+          <p>
+            Route legs: <strong>{selectedRouteExchangeSummary.totalLegs}</strong> · Transit hubs:{" "}
+            <strong>{selectedRouteExchangeSummary.transitStops.length}</strong>
+            {selectedRouteExchangeSummary.transitStops.length > 0
+              ? ` (${selectedRouteExchangeSummary.transitStops.join(" → ")})`
+              : " (direct lane)"}
+          </p>
+        </div>
+      ) : null}
+
       <p className="sectionIntro">
         Tap or hover a route segment for material + corridor details. Port markers show export
         start, import end, and transit checkpoints.
       </p>
+
       {activeSegment ? (
         <div className="mapRouteDetail" role="status" aria-live="polite">
           <p>
