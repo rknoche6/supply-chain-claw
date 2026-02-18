@@ -513,6 +513,42 @@ export default function TradeExplorer() {
       </Card>
 
       <Card
+        title="Map → exchange workflow"
+        subtitle="Use this sequence to move from route discovery to material-level decisions faster."
+      >
+        <ol className="miniList">
+          <li>
+            <strong>1) Focus the map</strong>: Pick a country and role to isolate relevant
+            corridors.
+          </li>
+          <li>
+            <strong>2) Prioritize exchange lanes</strong>: Use flow share in primary lanes to
+            identify the highest-impact exporter → importer pairs first.
+          </li>
+          <li>
+            <strong>3) Validate material coverage</strong>: Open linked material pages to confirm
+            extraction and processing context before finalizing route decisions.
+          </li>
+        </ol>
+        <div className="filterActions">
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => setMaterialLinkMode("linked")}
+          >
+            Show only routes linked to material datasets
+          </button>
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => setCountryRole("exporter")}
+          >
+            Focus exporter-side pressure points
+          </button>
+        </div>
+      </Card>
+
+      <Card
         title="Importers and exporters summary"
         subtitle="Top countries in the current filtered view."
       >
