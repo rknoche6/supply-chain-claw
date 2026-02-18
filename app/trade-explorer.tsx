@@ -493,6 +493,9 @@ export default function TradeExplorer() {
         linkedMaterials: Set<string>;
         unmatchedProducts: Set<string>;
         matchedFlowCount: number;
+        exactMatchCount: number;
+        partialMatchCount: number;
+        noMatchCount: number;
       }
     >();
 
@@ -525,6 +528,9 @@ export default function TradeExplorer() {
         linkedMaterials: new Set<string>(),
         unmatchedProducts: new Set<string>(),
         matchedFlowCount: 0,
+        exactMatchCount: 0,
+        partialMatchCount: 0,
+        noMatchCount: 0,
       };
 
       const materialMatch = getMaterialMatch(flow.product);
@@ -538,6 +544,15 @@ export default function TradeExplorer() {
       } else {
         existing.unmatchedProducts.add(flow.product);
       }
+
+      if (materialMatch.quality === "exact") {
+        existing.exactMatchCount += 1;
+      } else if (materialMatch.quality === "partial") {
+        existing.partialMatchCount += 1;
+      } else {
+        existing.noMatchCount += 1;
+      }
+
       laneCounts.set(laneId, existing);
     }
 
@@ -1372,134 +1387,146 @@ export default function TradeExplorer() {
         subtitle="Most repeated exporter → importer country pairs across the active filtered routes, including flow share and linked raw-material datasets."
       >
         {primaryExchangeLanes.length > 0 ? (
-          <div className="tableWrap">
-            <table className="flowTable">
-              <thead>
-                <tr>
-                  <th>Exporter</th>
-                  <th>Importer</th>
-                  <th>Matched flows</th>
-                  <th>Flow share</th>
-                  <th>Material coverage</th>
-                  <th>Categories</th>
-                  <th>Sample products</th>
-                  <th>Unlinked products</th>
-                  <th>Linked materials</th>
-                  <th>Workflow quick action</th>
-                  <th>Drilldowns</th>
-                </tr>
-              </thead>
-              <tbody>
-                {primaryExchangeLanes.map((lane) => (
-                  <tr key={`lane-${lane.exporterSlug}-${lane.importerSlug}`}>
-                    <td>
-                      {countrySlugSet.has(lane.exporterSlug) ? (
-                        <Link href={`/countries/${lane.exporterSlug}`}>{lane.exporter}</Link>
-                      ) : (
-                        lane.exporter
-                      )}
-                    </td>
-                    <td>
-                      {countrySlugSet.has(lane.importerSlug) ? (
-                        <Link href={`/countries/${lane.importerSlug}`}>{lane.importer}</Link>
-                      ) : (
-                        lane.importer
-                      )}
-                    </td>
-                    <td>{lane.flowCount}</td>
-                    <td>{lane.laneShare.toFixed(0)}%</td>
-                    <td>
-                      {lane.matchedFlowCount} / {lane.flowCount} (
-                      {lane.materialCoverageShare.toFixed(0)}%)
-                    </td>
-                    <td>{lane.categories.join(", ")}</td>
-                    <td>{lane.products.slice(0, 3).join(", ")}</td>
-                    <td>
-                      {lane.unmatchedProducts.length > 0
-                        ? lane.unmatchedProducts.slice(0, 3).join(", ")
-                        : "None"}
-                    </td>
-                    <td>
-                      {lane.linkedMaterialRecords.length > 0
-                        ? lane.linkedMaterialRecords.map((material, index) => (
-                            <span
-                              key={`${lane.exporterSlug}-${lane.importerSlug}-${material.slug}`}
-                            >
-                              {index > 0 ? ", " : ""}
-                              <Link href={`/materials/${material.slug}`}>{material.name}</Link>
-                            </span>
-                          ))
-                        : "No direct material match"}
-                    </td>
-                    <td>
-                      {lane.materialCoverageShare >= 100 ? (
-                        <button
-                          type="button"
-                          className="secondaryButton"
-                          onClick={() =>
-                            focusLaneWorkflow({
-                              exporter: lane.exporter,
-                              importer: lane.importer,
-                              mode: "optimize",
-                            })
-                          }
-                        >
-                          Optimize lane now
-                        </button>
-                      ) : lane.materialCoverageShare > 0 ? (
-                        <button
-                          type="button"
-                          className="secondaryButton"
-                          onClick={() =>
-                            focusLaneWorkflow({
-                              exporter: lane.exporter,
-                              importer: lane.importer,
-                              mode: "verify",
-                            })
-                          }
-                        >
-                          Verify missing links
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="secondaryButton"
-                          onClick={() =>
-                            focusLaneWorkflow({
-                              exporter: lane.exporter,
-                              importer: lane.importer,
-                              mode: "expand",
-                            })
-                          }
-                        >
-                          Expand material data
-                        </button>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="secondaryButton"
-                        onClick={() =>
-                          focusLaneOnMap({ exporter: lane.exporter, importer: lane.importer })
-                        }
-                      >
-                        Focus on map
-                      </button>
-                      <br />
-                      {lane.compareHref ? (
-                        <Link href={lane.compareHref}>
-                          Compare {lane.exporter} vs {lane.importer}
-                        </Link>
-                      ) : (
-                        "Compare unavailable"
-                      )}
-                    </td>
+          <>
+            <div className="tableWrap">
+              <table className="flowTable">
+                <thead>
+                  <tr>
+                    <th>Exporter</th>
+                    <th>Importer</th>
+                    <th>Matched flows</th>
+                    <th>Flow share</th>
+                    <th>Material coverage</th>
+                    <th>Evidence quality mix</th>
+                    <th>Categories</th>
+                    <th>Sample products</th>
+                    <th>Unlinked products</th>
+                    <th>Linked materials</th>
+                    <th>Workflow quick action</th>
+                    <th>Drilldowns</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {primaryExchangeLanes.map((lane) => (
+                    <tr key={`lane-${lane.exporterSlug}-${lane.importerSlug}`}>
+                      <td>
+                        {countrySlugSet.has(lane.exporterSlug) ? (
+                          <Link href={`/countries/${lane.exporterSlug}`}>{lane.exporter}</Link>
+                        ) : (
+                          lane.exporter
+                        )}
+                      </td>
+                      <td>
+                        {countrySlugSet.has(lane.importerSlug) ? (
+                          <Link href={`/countries/${lane.importerSlug}`}>{lane.importer}</Link>
+                        ) : (
+                          lane.importer
+                        )}
+                      </td>
+                      <td>{lane.flowCount}</td>
+                      <td>{lane.laneShare.toFixed(0)}%</td>
+                      <td>
+                        {lane.matchedFlowCount} / {lane.flowCount} (
+                        {lane.materialCoverageShare.toFixed(0)}%)
+                      </td>
+                      <td>
+                        Exact: {lane.exactMatchCount} · Partial: {lane.partialMatchCount} · Gap:{" "}
+                        {lane.noMatchCount}
+                      </td>
+                      <td>{lane.categories.join(", ")}</td>
+                      <td>{lane.products.slice(0, 3).join(", ")}</td>
+                      <td>
+                        {lane.unmatchedProducts.length > 0
+                          ? lane.unmatchedProducts.slice(0, 3).join(", ")
+                          : "None"}
+                      </td>
+                      <td>
+                        {lane.linkedMaterialRecords.length > 0
+                          ? lane.linkedMaterialRecords.map((material, index) => (
+                              <span
+                                key={`${lane.exporterSlug}-${lane.importerSlug}-${material.slug}`}
+                              >
+                                {index > 0 ? ", " : ""}
+                                <Link href={`/materials/${material.slug}`}>{material.name}</Link>
+                              </span>
+                            ))
+                          : "No direct material match"}
+                      </td>
+                      <td>
+                        {lane.materialCoverageShare >= 100 ? (
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            onClick={() =>
+                              focusLaneWorkflow({
+                                exporter: lane.exporter,
+                                importer: lane.importer,
+                                mode: "optimize",
+                              })
+                            }
+                          >
+                            Optimize lane now
+                          </button>
+                        ) : lane.materialCoverageShare > 0 ? (
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            onClick={() =>
+                              focusLaneWorkflow({
+                                exporter: lane.exporter,
+                                importer: lane.importer,
+                                mode: "verify",
+                              })
+                            }
+                          >
+                            Verify missing links
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            onClick={() =>
+                              focusLaneWorkflow({
+                                exporter: lane.exporter,
+                                importer: lane.importer,
+                                mode: "expand",
+                              })
+                            }
+                          >
+                            Expand material data
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() =>
+                            focusLaneOnMap({ exporter: lane.exporter, importer: lane.importer })
+                          }
+                        >
+                          Focus on map
+                        </button>
+                        <br />
+                        {lane.compareHref ? (
+                          <Link href={lane.compareHref}>
+                            Compare {lane.exporter} vs {lane.importer}
+                          </Link>
+                        ) : (
+                          "Compare unavailable"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="sectionIntro">
+              Evidence quality mix shows lane confidence at a glance: exact matches are strongest,
+              partial matches need validation, and gaps mark products that still need material
+              linkage.
+            </p>
+          </>
         ) : (
           <p className="sectionIntro">No exchange lanes available for the current filters.</p>
         )}
