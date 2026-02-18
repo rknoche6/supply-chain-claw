@@ -13,6 +13,9 @@ type CountryPageProps = {
   searchParams?: {
     partner?: string;
     roleCoverage?: string;
+    partnerCorridor?: string;
+    corridorRole?: string;
+    corridorCategory?: string;
   };
 };
 
@@ -73,6 +76,12 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
     searchParams?.roleCoverage === "export-only"
       ? (searchParams.roleCoverage as CountryRoleFilter)
       : "all";
+  const corridorPartnerQuery = (searchParams?.partnerCorridor ?? "").trim().toLowerCase();
+  const selectedCorridorRole =
+    searchParams?.corridorRole === "Importer" || searchParams?.corridorRole === "Exporter"
+      ? searchParams.corridorRole
+      : "all";
+  const selectedCorridorCategory = (searchParams?.corridorCategory ?? "all").trim();
 
   const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
   const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
@@ -355,6 +364,21 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
         a.role.localeCompare(b.role) ||
         a.product.localeCompare(b.product)
     );
+
+  const corridorCategories = Array.from(
+    new Set(partnerRouteCoverage.map((row) => row.category))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredPartnerRouteCoverage = partnerRouteCoverage.filter((row) => {
+    const roleMatches = selectedCorridorRole === "all" || row.role === selectedCorridorRole;
+    const categoryMatches =
+      selectedCorridorCategory === "all" || row.category === selectedCorridorCategory;
+    const partnerMatches =
+      corridorPartnerQuery.length === 0 ||
+      row.partnerName.toLowerCase().includes(corridorPartnerQuery);
+
+    return roleMatches && categoryMatches && partnerMatches;
+  });
 
   return (
     <Container>
@@ -854,7 +878,52 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
         title="Partner corridor evidence"
         subtitle="Product-level route rows showing which partners appear with this country as importer or exporter."
       >
-        {partnerRouteCoverage.length > 0 ? (
+        <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
+          <label>
+            Partner search
+            <input
+              type="search"
+              name="partnerCorridor"
+              defaultValue={searchParams?.partnerCorridor ?? ""}
+              placeholder="Filter partner country"
+            />
+          </label>
+
+          <label>
+            Country role
+            <select name="corridorRole" defaultValue={selectedCorridorRole}>
+              <option value="all">All country roles</option>
+              <option value="Importer">Importer</option>
+              <option value="Exporter">Exporter</option>
+            </select>
+          </label>
+
+          <label>
+            Category
+            <select name="corridorCategory" defaultValue={selectedCorridorCategory}>
+              <option value="all">All categories</option>
+              {corridorCategories.map((category) => (
+                <option key={`${country.slug}-corridor-category-${category}`} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button type="submit" className="secondaryButton">
+            Apply filters
+          </button>
+          <Link href={`/countries/${country.slug}`} className="secondaryButton" prefetch={false}>
+            Reset
+          </Link>
+        </form>
+
+        <p className="sectionIntro">
+          Showing {filteredPartnerRouteCoverage.length} of {partnerRouteCoverage.length} corridor
+          rows.
+        </p>
+
+        {filteredPartnerRouteCoverage.length > 0 ? (
           <div className="tableWrap">
             <table className="flowTable">
               <thead>
@@ -867,7 +936,7 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
                 </tr>
               </thead>
               <tbody>
-                {partnerRouteCoverage.map((row) => {
+                {filteredPartnerRouteCoverage.map((row) => {
                   const partnerSlug = partnerSlugByName.get(row.partnerName);
 
                   return (
@@ -891,6 +960,8 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
               </tbody>
             </table>
           </div>
+        ) : partnerRouteCoverage.length > 0 ? (
+          <p className="sectionIntro">No corridor rows match the current filters.</p>
         ) : (
           <p className="sectionIntro">No partner corridor rows available for this country yet.</p>
         )}
