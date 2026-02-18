@@ -12,11 +12,15 @@ import {
 import { getCountryProfiles, toCountrySlug } from "../lib/countries";
 
 type MaterialCategory = (typeof rawMaterialCategories)[number];
+type ConfidenceFilter = "All confidence" | "High only" | "High + Medium";
+type FreshnessFilter = "All freshness" | "Current only" | "Current + Recent";
 
 export default function RawMaterialsExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<MaterialCategory>("All");
   const [country, setCountry] = useState("All countries");
+  const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>("All confidence");
+  const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("All freshness");
 
   const countries = useMemo(() => {
     const set = new Set<string>();
@@ -31,24 +35,45 @@ export default function RawMaterialsExplorer() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+
     return rawMaterials
+      .map((item) => {
+        const filteredPoints = item.dataPoints
+          .filter((point) => {
+            const byCountry = country === "All countries" || point.country === country;
+            const confidence = getDataPointConfidence(point);
+            const freshness = getFreshnessLabel(point.year, item.updatedAt);
+
+            const byConfidence =
+              confidenceFilter === "All confidence" ||
+              (confidenceFilter === "High only" && confidence === "High") ||
+              (confidenceFilter === "High + Medium" && confidence !== "Low");
+
+            const byFreshness =
+              freshnessFilter === "All freshness" ||
+              (freshnessFilter === "Current only" && freshness === "Current") ||
+              (freshnessFilter === "Current + Recent" && freshness !== "Stale");
+
+            return byCountry && byConfidence && byFreshness;
+          })
+          .sort((a, b) => b.value - a.value);
+
+        return {
+          ...item,
+          dataPoints: filteredPoints,
+        };
+      })
       .filter((item) => {
         const byCategory = category === "All" || item.category === category;
-        const byCountry =
-          country === "All countries" || item.dataPoints.some((point) => point.country === country);
         const byQuery =
           q.length === 0 ||
           item.name.toLowerCase().includes(q) ||
           item.notes.toLowerCase().includes(q) ||
           item.dataPoints.some((d) => d.country.toLowerCase().includes(q));
 
-        return byCategory && byCountry && byQuery;
-      })
-      .map((item) => ({
-        ...item,
-        dataPoints: [...item.dataPoints].sort((a, b) => b.value - a.value),
-      }));
-  }, [category, country, query]);
+        return byCategory && byQuery && item.dataPoints.length > 0;
+      });
+  }, [category, confidenceFilter, country, freshnessFilter, query]);
 
   const countryLeaderboard = useMemo(() => {
     const stats = new Map<string, { records: number; materials: Set<string> }>();
@@ -75,6 +100,11 @@ export default function RawMaterialsExplorer() {
   }, [filtered]);
 
   const totalVisibleRecords = filtered.reduce((sum, item) => sum + item.dataPoints.length, 0);
+  const highConfidenceVisibleRecords = filtered.reduce(
+    (sum, item) =>
+      sum + item.dataPoints.filter((point) => getDataPointConfidence(point) === "High").length,
+    0
+  );
 
   return (
     <Card>
@@ -118,11 +148,39 @@ export default function RawMaterialsExplorer() {
             ))}
           </select>
         </label>
+
+        <label>
+          Confidence filter
+          <select
+            value={confidenceFilter}
+            onChange={(e) => setConfidenceFilter(e.target.value as ConfidenceFilter)}
+          >
+            <option>All confidence</option>
+            <option>High only</option>
+            <option>High + Medium</option>
+          </select>
+        </label>
+
+        <label>
+          Freshness filter
+          <select
+            value={freshnessFilter}
+            onChange={(e) => setFreshnessFilter(e.target.value as FreshnessFilter)}
+          >
+            <option>All freshness</option>
+            <option>Current only</option>
+            <option>Current + Recent</option>
+          </select>
+        </label>
       </div>
 
       <StatGrid>
         <StatCard label="Materials in view" value={String(filtered.length)} />
         <StatCard label="Numeric records in view" value={String(totalVisibleRecords)} />
+        <StatCard
+          label="High-confidence records in view"
+          value={String(highConfidenceVisibleRecords)}
+        />
         <article className="statCard">
           <p className="statLabel">Top countries in current filters</p>
           <ul className="miniList">
