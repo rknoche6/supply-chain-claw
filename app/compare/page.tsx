@@ -843,6 +843,8 @@ export default function ComparePage() {
                   <thead>
                     <tr>
                       <th>Material</th>
+                      <th>{leftCountry.name} metric</th>
+                      <th>{rightCountry.name} metric</th>
                       <th>{leftCountry.name}</th>
                       <th>{rightCountry.name}</th>
                       <th>Delta</th>
@@ -860,6 +862,8 @@ export default function ComparePage() {
                         <td>
                           <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
                         </td>
+                        <td>{row.leftRecord.metric}</td>
+                        <td>{row.rightRecord.metric}</td>
                         <td>
                           {row.leftRecord.value.toLocaleString()} {row.leftRecord.unit} (
                           {row.leftRecord.year})
