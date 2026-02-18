@@ -10,6 +10,22 @@ const highConfidenceDataPoints = allDataPoints.filter(
   (point) => getDataPointConfidence(point) === "High"
 );
 
+const defaultLeftCountry = countryProfiles[0]?.slug ?? "";
+const defaultRightCountry = countryProfiles[1]?.slug ?? countryProfiles[0]?.slug ?? "";
+const defaultLeftMaterial = rawMaterials[0]?.slug ?? "";
+const defaultRightMaterial = rawMaterials[1]?.slug ?? rawMaterials[0]?.slug ?? "";
+
+const compareShortcut =
+  defaultLeftCountry && defaultRightCountry && defaultLeftMaterial && defaultRightMaterial
+    ? `/compare?${new URLSearchParams({
+        leftCountry: defaultLeftCountry,
+        rightCountry: defaultRightCountry,
+        leftMaterial: defaultLeftMaterial,
+        rightMaterial: defaultRightMaterial,
+        highConfidenceOnly: "1",
+      }).toString()}`
+    : "/compare";
+
 export default function HomePage() {
   return (
     <Container>
@@ -20,6 +36,38 @@ export default function HomePage() {
       </header>
 
       <ExplorerCommandSearch />
+
+      <Card
+        title="Quick launch"
+        subtitle="Open pre-filtered explorer views focused on cited numeric records."
+      >
+        <div className="linkChipList">
+          <Link href={compareShortcut} className="linkChip">
+            <span>High-confidence compare</span>
+            <span>Prefilled country + material baseline</span>
+          </Link>
+          {countryProfiles.slice(0, 3).map((country) => (
+            <Link
+              key={`home-country-${country.slug}`}
+              href={`/countries/${country.slug}`}
+              className="linkChip"
+            >
+              <span>{country.name}</span>
+              <span>Country role + partner drilldown</span>
+            </Link>
+          ))}
+          {rawMaterials.slice(0, 3).map((material) => (
+            <Link
+              key={`home-material-${material.slug}`}
+              href={`/materials/${material.slug}`}
+              className="linkChip"
+            >
+              <span>{material.name}</span>
+              <span>Values, units, years, and citations</span>
+            </Link>
+          ))}
+        </div>
+      </Card>
 
       <Card title="Core pages" subtitle="Use dedicated URLs instead of one giant homepage.">
         <div className="linkChipList">
