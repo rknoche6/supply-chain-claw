@@ -394,6 +394,19 @@ export default function TradeExplorer() {
       .slice(0, 10);
   }, [countrySlugSet, filtered]);
 
+  const selectedRouteLaneCoverage = useMemo(() => {
+    if (!selectedRoute?.topExporter || !selectedRoute?.topImporter) {
+      return null;
+    }
+
+    return (
+      primaryExchangeLanes.find(
+        (lane) =>
+          lane.exporter === selectedRoute.topExporter && lane.importer === selectedRoute.topImporter
+      ) ?? null
+    );
+  }, [primaryExchangeLanes, selectedRoute]);
+
   const primaryExchangeCoverageGaps = useMemo(() => {
     return [...primaryExchangeLanes]
       .sort(
@@ -829,6 +842,59 @@ export default function TradeExplorer() {
                     <Link href={selectedRoute.compareHref}>{selectedRoute.topImporter}</Link>
                   </p>
                 ) : null}
+
+                <div className="mapRouteDetail" role="status" aria-live="polite">
+                  <p>
+                    <strong>Route readiness checklist</strong>
+                  </p>
+                  <ul className="miniList">
+                    <li>
+                      Corridor mapped: <strong>{selectedRoute.stops.length - 1} segments</strong>
+                    </li>
+                    <li>
+                      Primary exchange pair:{" "}
+                      {selectedRoute.topExporter && selectedRoute.topImporter ? (
+                        <strong>
+                          {selectedRoute.topExporter} → {selectedRoute.topImporter}
+                        </strong>
+                      ) : (
+                        <strong>Not identified yet</strong>
+                      )}
+                    </li>
+                    <li>
+                      Material evidence:{" "}
+                      {selectedRoute.matchedMaterial ? (
+                        <>
+                          <strong>Linked</strong> ({selectedRoute.matchedMaterial.name})
+                        </>
+                      ) : (
+                        <>
+                          <strong>Gap detected</strong> (no direct material dataset match)
+                        </>
+                      )}
+                    </li>
+                    {selectedRouteLaneCoverage ? (
+                      <li>
+                        Lane coverage: <strong>{selectedRouteLaneCoverage.matchedFlowCount}</strong>{" "}
+                        of <strong>{selectedRouteLaneCoverage.flowCount}</strong> flows with
+                        material links (
+                        <strong>
+                          {selectedRouteLaneCoverage.materialCoverageShare.toFixed(0)}%
+                        </strong>
+                        )
+                      </li>
+                    ) : null}
+                  </ul>
+                  {!selectedRoute.matchedMaterial ? (
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => setMaterialLinkMode("linked")}
+                    >
+                      Limit view to material-linked routes
+                    </button>
+                  ) : null}
+                </div>
               </>
             ) : null}
 
