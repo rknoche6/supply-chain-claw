@@ -16,6 +16,7 @@ type CountryPageProps = {
     partnerCorridor?: string;
     corridorRole?: string;
     corridorCategory?: string;
+    materialConfidence?: string;
   };
 };
 
@@ -82,6 +83,7 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
       ? searchParams.corridorRole
       : "all";
   const selectedCorridorCategory = (searchParams?.corridorCategory ?? "all").trim();
+  const selectedMaterialConfidence = searchParams?.materialConfidence === "all" ? "all" : "high";
 
   const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
   const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
@@ -380,6 +382,12 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
     return roleMatches && categoryMatches && partnerMatches;
   });
 
+  const filteredMaterialRecords = country.materialRecords
+    .filter((record) => selectedMaterialConfidence === "all" || record.confidence === "High")
+    .sort(
+      (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
+    );
+
   return (
     <Container>
       <header className="pageHeader">
@@ -673,7 +681,29 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
         title="Source-cited material records"
         subtitle="Exact numeric records linked to this country with units, year, freshness, and confidence."
       >
-        {country.materialRecords.length > 0 ? (
+        <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
+          <label>
+            Confidence scope
+            <select name="materialConfidence" defaultValue={selectedMaterialConfidence}>
+              <option value="high">High-confidence only (default)</option>
+              <option value="all">All confidence levels</option>
+            </select>
+          </label>
+
+          <button type="submit" className="secondaryButton">
+            Apply filters
+          </button>
+          <Link href={`/countries/${country.slug}`} className="secondaryButton" prefetch={false}>
+            Reset
+          </Link>
+        </form>
+
+        <p className="sectionIntro">
+          Showing {filteredMaterialRecords.length} of {country.materialRecords.length} material
+          records.
+        </p>
+
+        {filteredMaterialRecords.length > 0 ? (
           <div className="tableWrap">
             <table className="flowTable">
               <thead>
@@ -689,7 +719,7 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
                 </tr>
               </thead>
               <tbody>
-                {country.materialRecords.map((record) => (
+                {filteredMaterialRecords.map((record) => (
                   <tr
                     key={`${country.slug}-${record.materialSlug}-${record.metric}-${record.year}-${record.value}`}
                   >
@@ -715,7 +745,9 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
             </table>
           </div>
         ) : (
-          <p className="sectionIntro">No source-cited material records for this country yet.</p>
+          <p className="sectionIntro">
+            No source-cited material records match the current confidence filter.
+          </p>
         )}
       </Card>
 
