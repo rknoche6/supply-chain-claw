@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card, SectionHeader } from "./components";
-import { rawMaterialCategories, rawMaterials } from "../lib/raw-materials";
+import {
+  getDataPointConfidence,
+  getFreshnessLabel,
+  rawMaterialCategories,
+  rawMaterials,
+} from "../lib/raw-materials";
+import { getCountryProfiles, toCountrySlug } from "../lib/countries";
 
 type MaterialCategory = (typeof rawMaterialCategories)[number];
 
@@ -17,6 +23,11 @@ export default function RawMaterialsExplorer() {
     rawMaterials.forEach((m) => m.dataPoints.forEach((d) => set.add(d.country)));
     return ["All countries", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, []);
+
+  const countrySlugSet = useMemo(
+    () => new Set(getCountryProfiles().map((countryProfile) => countryProfile.slug)),
+    []
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -100,25 +111,42 @@ export default function RawMaterialsExplorer() {
                   <th>Metric</th>
                   <th>Value</th>
                   <th>Year</th>
+                  <th>Freshness</th>
+                  <th>Confidence</th>
                   <th>Source</th>
                 </tr>
               </thead>
               <tbody>
-                {item.dataPoints.map((point) => (
-                  <tr key={`${item.name}-${point.country}-${point.metric}`}>
-                    <td>{point.country}</td>
-                    <td>{point.metric}</td>
-                    <td>
-                      {point.value.toLocaleString()} {point.unit}
-                    </td>
-                    <td>{point.year}</td>
-                    <td>
-                      <a href={point.sourceUrl} target="_blank" rel="noreferrer">
-                        {point.sourceName}
-                      </a>
-                    </td>
-                  </tr>
-                ))}
+                {item.dataPoints.map((point) => {
+                  const freshness = getFreshnessLabel(point.year, item.updatedAt);
+                  const confidence = getDataPointConfidence(point);
+                  const countrySlug = toCountrySlug(point.country);
+                  const hasCountryPage = countrySlugSet.has(countrySlug);
+
+                  return (
+                    <tr key={`${item.name}-${point.country}-${point.metric}-${point.year}`}>
+                      <td>
+                        {hasCountryPage ? (
+                          <Link href={`/countries/${countrySlug}`}>{point.country}</Link>
+                        ) : (
+                          point.country
+                        )}
+                      </td>
+                      <td>{point.metric}</td>
+                      <td>
+                        {point.value.toLocaleString()} {point.unit}
+                      </td>
+                      <td>{point.year}</td>
+                      <td>{freshness}</td>
+                      <td>{confidence}</td>
+                      <td>
+                        <a href={point.sourceUrl} target="_blank" rel="noreferrer">
+                          {point.sourceName}
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
