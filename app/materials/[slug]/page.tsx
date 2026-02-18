@@ -18,6 +18,7 @@ type MaterialPageProps = {
     confidence?: string;
     freshness?: string;
     country?: string;
+    sort?: string;
   };
 };
 
@@ -40,7 +41,24 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
     searchParams?.freshness === "Stale"
       ? searchParams.freshness
       : "all";
+  const selectedSort =
+    searchParams?.sort === "value-asc" ||
+    searchParams?.sort === "year-desc" ||
+    searchParams?.sort === "year-asc" ||
+    searchParams?.sort === "country-asc"
+      ? searchParams.sort
+      : "value-desc";
   const countryQuery = (searchParams?.country ?? "").trim().toLowerCase();
+  const sortLabel =
+    selectedSort === "value-asc"
+      ? "lowest value first"
+      : selectedSort === "year-desc"
+        ? "newest year first"
+        : selectedSort === "year-asc"
+          ? "oldest year first"
+          : selectedSort === "country-asc"
+            ? "country A-Z"
+            : "highest value first";
 
   const filteredPoints = material.dataPoints.filter((point) => {
     const confidence = getDataPointConfidence(point);
@@ -55,7 +73,25 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
   });
 
   const sortedPoints = [...material.dataPoints].sort((a, b) => b.value - a.value);
-  const filteredSortedPoints = [...filteredPoints].sort((a, b) => b.value - a.value);
+  const filteredSortedPoints = [...filteredPoints].sort((a, b) => {
+    if (selectedSort === "value-asc") {
+      return a.value - b.value || b.year - a.year || a.country.localeCompare(b.country);
+    }
+
+    if (selectedSort === "year-desc") {
+      return b.year - a.year || b.value - a.value || a.country.localeCompare(b.country);
+    }
+
+    if (selectedSort === "year-asc") {
+      return a.year - b.year || b.value - a.value || a.country.localeCompare(b.country);
+    }
+
+    if (selectedSort === "country-asc") {
+      return a.country.localeCompare(b.country) || b.value - a.value || b.year - a.year;
+    }
+
+    return b.value - a.value || b.year - a.year || a.country.localeCompare(b.country);
+  });
   const topPoint = sortedPoints[0];
   const totalValue = sortedPoints.reduce((sum, point) => sum + point.value, 0);
   const topThreeValue = sortedPoints.slice(0, 3).reduce((sum, point) => sum + point.value, 0);
@@ -401,6 +437,17 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
             />
           </label>
 
+          <label>
+            Sort
+            <select name="sort" defaultValue={selectedSort}>
+              <option value="value-desc">Highest value first</option>
+              <option value="value-asc">Lowest value first</option>
+              <option value="year-desc">Newest year first</option>
+              <option value="year-asc">Oldest year first</option>
+              <option value="country-asc">Country A-Z</option>
+            </select>
+          </label>
+
           <button type="submit" className="secondaryButton">
             Apply filters
           </button>
@@ -410,7 +457,8 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
         </form>
 
         <p className="sectionIntro">
-          Showing {filteredSortedPoints.length} of {material.dataPoints.length} records.
+          Showing {filteredSortedPoints.length} of {material.dataPoints.length} records (sorted by{" "}
+          {sortLabel}).
         </p>
 
         <div className="tableWrap">
