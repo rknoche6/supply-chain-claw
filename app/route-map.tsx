@@ -9,6 +9,7 @@ type MappedRoute = {
   category: "Semiconductors" | "Raw Materials" | "Agriculture" | "Energy";
   stops: string[];
   matchesCountryFilter: boolean;
+  materialMatchQuality?: "exact" | "partial" | "none";
 };
 
 type RouteMapProps = {
@@ -178,6 +179,25 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
     };
   }, [selectedRoute]);
 
+  const materialEvidenceSummary = useMemo(() => {
+    const sourceRoutes = selectedRoute ? [selectedRoute] : normalizedRoutes;
+
+    return sourceRoutes.reduce(
+      (totals, route) => {
+        if (route.materialMatchQuality === "exact") {
+          totals.exact += 1;
+        } else if (route.materialMatchQuality === "partial") {
+          totals.partial += 1;
+        } else {
+          totals.none += 1;
+        }
+
+        return totals;
+      },
+      { exact: 0, partial: 0, none: 0 }
+    );
+  }, [normalizedRoutes, selectedRoute]);
+
   return (
     <div
       className="mapFrame mapFrame--enhanced"
@@ -310,6 +330,18 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
+      <div className="mapLegend" aria-label="Material evidence coverage on map lanes">
+        <span>
+          Material evidence: <strong>{materialEvidenceSummary.exact}</strong> exact
+        </span>
+        <span>
+          <strong>{materialEvidenceSummary.partial}</strong> partial
+        </span>
+        <span>
+          <strong>{materialEvidenceSummary.none}</strong> with no direct material match
+        </span>
+      </div>
+
       {selectedRouteExchangeSummary ? (
         <div className="mapRouteDetail" role="status" aria-live="polite">
           <p>
@@ -325,6 +357,16 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
             {selectedRouteExchangeSummary.transitStops.length > 0
               ? ` (${selectedRouteExchangeSummary.transitStops.join(" → ")})`
               : " (direct lane)"}
+          </p>
+          <p>
+            Material evidence quality:{" "}
+            <strong>
+              {selectedRoute?.materialMatchQuality === "exact"
+                ? "Exact"
+                : selectedRoute?.materialMatchQuality === "partial"
+                  ? "Partial"
+                  : "No direct match"}
+            </strong>
           </p>
         </div>
       ) : null}
