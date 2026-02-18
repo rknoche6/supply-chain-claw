@@ -51,6 +51,14 @@ function pickSharedMaterialSort(candidate: string | null): SharedMaterialSort {
   }
 }
 
+function pickTextFromQuery(candidate: string | null, fallback: string): string {
+  if (candidate === null) {
+    return fallback;
+  }
+
+  return candidate;
+}
+
 function getMaterialStats(slug: string) {
   const material = rawMaterials.find((item) => item.slug === slug);
   if (!material) return null;
@@ -356,6 +364,7 @@ export default function ComparePage() {
     setMatchedYearOnly(pickBooleanFromQuery(params.get("matchedYearOnly"), false));
     setComparableOnly(pickBooleanFromQuery(params.get("comparableOnly"), false));
     setSharedMaterialSort(pickSharedMaterialSort(params.get("sharedMaterialSort")));
+    setSharedMaterialQuery(pickTextFromQuery(params.get("sharedMaterialQuery"), ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -394,6 +403,12 @@ export default function ComparePage() {
       params.delete("sharedMaterialSort");
     }
 
+    if (sharedMaterialQuery.trim().length > 0) {
+      params.set("sharedMaterialQuery", sharedMaterialQuery.trim());
+    } else {
+      params.delete("sharedMaterialQuery");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", nextUrl);
   }, [
@@ -405,6 +420,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     sharedMaterialSort,
+    sharedMaterialQuery,
   ]);
 
   const compareParams = useMemo(() => {
@@ -431,6 +447,10 @@ export default function ComparePage() {
       params.set("sharedMaterialSort", sharedMaterialSort);
     }
 
+    if (sharedMaterialQuery.trim().length > 0) {
+      params.set("sharedMaterialQuery", sharedMaterialQuery.trim());
+    }
+
     return params;
   }, [
     leftCountrySlug,
@@ -441,6 +461,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     sharedMaterialSort,
+    sharedMaterialQuery,
   ]);
 
   const comparePath = `/compare?${compareParams.toString()}`;
@@ -685,6 +706,15 @@ export default function ComparePage() {
                   placeholder="Filter shared materials"
                 />
               </label>
+              {sharedMaterialQuery.trim().length > 0 ? (
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() => setSharedMaterialQuery("")}
+                >
+                  Clear search
+                </button>
+              ) : null}
             </div>
 
             <StatGrid>
