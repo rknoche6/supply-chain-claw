@@ -35,6 +35,10 @@ function getMaterialStats(slug: string) {
   };
 }
 
+function formatSignedDelta(value: number) {
+  return `${value >= 0 ? "+" : ""}${value}`;
+}
+
 export default function ComparePage() {
   const countrySlugs = countries.map((country) => country.slug);
   const materialSlugs = rawMaterials.map((material) => material.slug);
@@ -89,6 +93,32 @@ export default function ComparePage() {
       topProducerGap: leftMaterial.top.value - rightMaterial.top.value,
     };
   }, [leftMaterial, rightMaterial]);
+
+  const countryOverlap = useMemo(() => {
+    if (!leftCountry || !rightCountry) {
+      return null;
+    }
+
+    const leftProducts = new Set(leftCountry.products.map((item) => item.product));
+    const sharedProducts = rightCountry.products
+      .map((item) => item.product)
+      .filter((product, index, arr) => leftProducts.has(product) && arr.indexOf(product) === index)
+      .sort((a, b) => a.localeCompare(b));
+
+    const leftPartners = new Set(leftCountry.topPartners.map((partner) => partner.name));
+    const sharedPartners = rightCountry.topPartners
+      .map((partner) => partner.name)
+      .filter((name, index, arr) => leftPartners.has(name) && arr.indexOf(name) === index)
+      .sort((a, b) => a.localeCompare(b));
+
+    return {
+      sharedProducts,
+      sharedPartners,
+      exclusiveProductsLeft: leftProducts.size - sharedProducts.length,
+      exclusiveProductsRight:
+        new Set(rightCountry.products.map((item) => item.product)).size - sharedProducts.length,
+    };
+  }, [leftCountry, rightCountry]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -213,32 +243,65 @@ export default function ComparePage() {
           <div className="spotlightGrid">
             <article className="statCard">
               <p className="statLabel">Importer role delta</p>
-              <p className="statValue">
-                {countryComparison.importerDelta >= 0 ? "+" : ""}
-                {countryComparison.importerDelta}
-              </p>
+              <p className="statValue">{formatSignedDelta(countryComparison.importerDelta)}</p>
               <p className="statHint">
                 {leftCountry.name} vs {rightCountry.name}
               </p>
             </article>
             <article className="statCard">
               <p className="statLabel">Exporter role delta</p>
-              <p className="statValue">
-                {countryComparison.exporterDelta >= 0 ? "+" : ""}
-                {countryComparison.exporterDelta}
-              </p>
+              <p className="statValue">{formatSignedDelta(countryComparison.exporterDelta)}</p>
               <p className="statHint">
                 {leftCountry.name} vs {rightCountry.name}
               </p>
             </article>
             <article className="statCard">
               <p className="statLabel">Unique product delta</p>
-              <p className="statValue">
-                {countryComparison.flowDelta >= 0 ? "+" : ""}
-                {countryComparison.flowDelta}
-              </p>
+              <p className="statValue">{formatSignedDelta(countryComparison.flowDelta)}</p>
               <p className="statHint">
                 {leftCountry.name} vs {rightCountry.name}
+              </p>
+            </article>
+          </div>
+        ) : null}
+
+        {countryOverlap && leftCountry && rightCountry ? (
+          <div className="spotlightGrid">
+            <article className="statCard">
+              <p className="statLabel">Shared products</p>
+              <p className="statValue">{countryOverlap.sharedProducts.length}</p>
+              <p className="statHint">
+                {leftCountry.name} and {rightCountry.name}
+              </p>
+              {countryOverlap.sharedProducts.length > 0 ? (
+                <ul className="miniList">
+                  {countryOverlap.sharedProducts.slice(0, 6).map((product) => (
+                    <li key={product}>{product}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+
+            <article className="statCard">
+              <p className="statLabel">Shared top partners</p>
+              <p className="statValue">{countryOverlap.sharedPartners.length}</p>
+              <p className="statHint">Overlap in current top counterparties</p>
+              {countryOverlap.sharedPartners.length > 0 ? (
+                <ul className="miniList">
+                  {countryOverlap.sharedPartners.slice(0, 6).map((partner) => (
+                    <li key={partner}>{partner}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+
+            <article className="statCard">
+              <p className="statLabel">Exclusive products</p>
+              <p className="statValue">
+                {countryOverlap.exclusiveProductsLeft} vs {countryOverlap.exclusiveProductsRight}
+              </p>
+              <p className="statHint">
+                {leftCountry.name} unique set vs {rightCountry.name} unique set
               </p>
             </article>
           </div>
