@@ -52,6 +52,38 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
     return freshness === "Current" || freshness === "Recent";
   }).length;
 
+  const yearlyTrend = availableYears
+    .map((year) => {
+      const yearPoints = material.dataPoints.filter((point) => point.year === year);
+      const total = yearPoints.reduce((sum, point) => sum + point.value, 0);
+      const highConfidence = yearPoints.filter(
+        (point) => getDataPointConfidence(point) === "High"
+      ).length;
+
+      return {
+        year,
+        total,
+        recordCount: yearPoints.length,
+        highConfidence,
+        sourceCount: new Set(yearPoints.map((point) => point.sourceUrl)).size,
+      };
+    })
+    .sort((a, b) => b.year - a.year)
+    .map((entry, index, arr) => {
+      const previousYear = arr[index + 1];
+      const yoyDelta = previousYear ? entry.total - previousYear.total : null;
+      const yoyDeltaPercent =
+        previousYear && previousYear.total !== 0 && yoyDelta !== null
+          ? (yoyDelta / previousYear.total) * 100
+          : null;
+
+      return {
+        ...entry,
+        yoyDelta,
+        yoyDeltaPercent,
+      };
+    });
+
   return (
     <Container>
       <header className="pageHeader">
@@ -99,6 +131,52 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
             </p>
             <p className="statHint">Higher values indicate tighter producer concentration.</p>
           </article>
+        </div>
+      </Card>
+
+      <Card
+        title="Yearly trend coverage"
+        subtitle="Year totals, year-over-year movement, and confidence density in the captured records."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Total captured value</th>
+                <th>YoY delta</th>
+                <th>Records</th>
+                <th>High-confidence records</th>
+                <th>Source links</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearlyTrend.map((entry) => (
+                <tr key={`${material.slug}-trend-${entry.year}`}>
+                  <td>{entry.year}</td>
+                  <td>
+                    {entry.total.toLocaleString()} {topPoint.unit}
+                  </td>
+                  <td>
+                    {entry.yoyDelta === null ? (
+                      "Baseline"
+                    ) : (
+                      <>
+                        {entry.yoyDelta >= 0 ? "+" : ""}
+                        {entry.yoyDelta.toLocaleString()} {topPoint.unit}
+                        {entry.yoyDeltaPercent !== null
+                          ? ` (${entry.yoyDeltaPercent >= 0 ? "+" : ""}${entry.yoyDeltaPercent.toFixed(1)}%)`
+                          : ""}
+                      </>
+                    )}
+                  </td>
+                  <td>{entry.recordCount}</td>
+                  <td>{entry.highConfidence}</td>
+                  <td>{entry.sourceCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
 
