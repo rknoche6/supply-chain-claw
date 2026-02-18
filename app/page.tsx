@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { Card, Container, Pill } from "./components";
+import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import RawMaterialsExplorer from "./raw-materials-explorer";
 import TradeExplorer from "./trade-explorer";
 import ExplorerLaunchpad from "./explorer-launchpad";
 import ExplorerCommandSearch from "./explorer-command-search";
 import { getCountryProfiles } from "../lib/countries";
-import { rawMaterials } from "../lib/raw-materials";
+import { getDataPointConfidence, rawMaterials } from "../lib/raw-materials";
 
 const featuredMaterials = [...rawMaterials]
   .sort((a, b) => b.dataPoints.length - a.dataPoints.length || a.name.localeCompare(b.name))
   .slice(0, 6);
 
-const featuredCountries = [...getCountryProfiles()]
+const countryProfiles = getCountryProfiles();
+
+const featuredCountries = [...countryProfiles]
   .sort(
     (a, b) =>
       b.roleBreakdown.totalFlows - a.roleBreakdown.totalFlows ||
@@ -21,6 +23,16 @@ const featuredCountries = [...getCountryProfiles()]
       a.name.localeCompare(b.name)
   )
   .slice(0, 8);
+
+const allDataPoints = rawMaterials.flatMap((material) => material.dataPoints);
+const highConfidenceDataPoints = allDataPoints.filter(
+  (point) => getDataPointConfidence(point) === "High"
+);
+const uniqueSourceCount = new Set(allDataPoints.map((point) => point.sourceUrl)).size;
+const latestReferenceYear = allDataPoints.length
+  ? Math.max(...allDataPoints.map((point) => point.year))
+  : null;
+const materialCategoryCount = new Set(rawMaterials.map((material) => material.category)).size;
 
 export default function HomePage() {
   return (
@@ -39,6 +51,32 @@ export default function HomePage() {
       </header>
 
       <ExplorerCommandSearch />
+
+      <Card
+        title="Explorer command-center snapshot"
+        subtitle="Live coverage metrics for countries, materials, source citations, and confidence density in the current dataset."
+      >
+        <StatGrid>
+          <StatCard label="Countries with detail pages" value={String(countryProfiles.length)} />
+          <StatCard label="Material detail pages" value={String(rawMaterials.length)} />
+          <StatCard label="Material categories" value={String(materialCategoryCount)} />
+          <StatCard label="Numeric records" value={String(allDataPoints.length)} />
+          <StatCard
+            label="High-confidence records"
+            value={`${highConfidenceDataPoints.length}/${allDataPoints.length}`}
+            hint={
+              allDataPoints.length > 0
+                ? `${((highConfidenceDataPoints.length / allDataPoints.length) * 100).toFixed(1)}% confidence-complete`
+                : "No records yet"
+            }
+          />
+          <StatCard
+            label="Source links"
+            value={String(uniqueSourceCount)}
+            hint={latestReferenceYear ? `Latest reference year ${latestReferenceYear}` : "—"}
+          />
+        </StatGrid>
+      </Card>
 
       <Card
         title="Quick drilldowns"
