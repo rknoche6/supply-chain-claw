@@ -1036,6 +1036,7 @@ export default function TradeExplorer() {
                   <th>Matched flows</th>
                   <th>Material coverage</th>
                   <th>Next step</th>
+                  <th>Map action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1057,6 +1058,21 @@ export default function TradeExplorer() {
                             </span>
                           ))
                         : "No linked materials yet — prioritize data expansion"}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() =>
+                          focusLaneOnMap({
+                            exporter: lane.exporter,
+                            importer: lane.importer,
+                            linkedOnly: lane.linkedMaterialRecords.length > 0,
+                          })
+                        }
+                      >
+                        Focus lane on map
+                      </button>
                     </td>
                   </tr>
                 ))}
