@@ -4,6 +4,7 @@ import RawMaterialsExplorer from "./raw-materials-explorer";
 import TradeExplorer from "./trade-explorer";
 import ExplorerLaunchpad from "./explorer-launchpad";
 import ExplorerCommandSearch from "./explorer-command-search";
+import ExplorerDrilldownBrowser from "./explorer-drilldown-browser";
 import { getCountryProfiles } from "../lib/countries";
 import { getDataPointConfidence, rawMaterials } from "../lib/raw-materials";
 
@@ -109,6 +110,7 @@ export default function HomePage() {
         </div>
       </Card>
 
+      <ExplorerDrilldownBrowser />
       <ExplorerLaunchpad />
       <RawMaterialsExplorer />
       <TradeExplorer />
