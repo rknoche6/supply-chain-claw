@@ -71,6 +71,58 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
   const getPartnerShare = (sharedFlows: number, totalFlows: number) =>
     totalFlows > 0 ? (sharedFlows / totalFlows) * 100 : 0;
 
+  const partnerRoleMatrix = Array.from(
+    country.topPartners
+      .reduce(
+        (map, partner) => {
+          const existing = map.get(partner.name) ?? {
+            name: partner.name,
+            importFlows: 0,
+            exportFlows: 0,
+          };
+
+          if (partner.role === "import-partner") {
+            existing.importFlows += partner.sharedFlows;
+          }
+
+          if (partner.role === "export-partner") {
+            existing.exportFlows += partner.sharedFlows;
+          }
+
+          map.set(partner.name, existing);
+          return map;
+        },
+        new Map<
+          string,
+          {
+            name: string;
+            importFlows: number;
+            exportFlows: number;
+          }
+        >()
+      )
+      .values()
+  )
+    .map((partner) => {
+      const importShare = getPartnerShare(partner.importFlows, importConcentration.total);
+      const exportShare = getPartnerShare(partner.exportFlows, exportConcentration.total);
+      const totalFlows = partner.importFlows + partner.exportFlows;
+
+      return {
+        ...partner,
+        importShare,
+        exportShare,
+        totalFlows,
+        roleCoverage:
+          partner.importFlows > 0 && partner.exportFlows > 0
+            ? "Both"
+            : partner.importFlows > 0
+              ? "Import only"
+              : "Export only",
+      };
+    })
+    .sort((a, b) => b.totalFlows - a.totalFlows || a.name.localeCompare(b.name));
+
   return (
     <Container>
       <header className="pageHeader">
@@ -139,6 +191,54 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
             </p>
           </article>
         </div>
+      </Card>
+
+      <Card
+        title="Partner role matrix"
+        subtitle="Unified partner table showing import/export overlap, role coverage, and share of tracked links."
+      >
+        {partnerRoleMatrix.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Partner country</th>
+                  <th>Role coverage</th>
+                  <th>Import links</th>
+                  <th>Import share</th>
+                  <th>Export links</th>
+                  <th>Export share</th>
+                  <th>Total links</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partnerRoleMatrix.map((partner) => {
+                  const slug = partnerSlugByName.get(partner.name);
+
+                  return (
+                    <tr key={`${country.slug}-matrix-${partner.name}`}>
+                      <td>
+                        {slug ? (
+                          <Link href={`/countries/${slug}`}>{partner.name}</Link>
+                        ) : (
+                          partner.name
+                        )}
+                      </td>
+                      <td>{partner.roleCoverage}</td>
+                      <td>{partner.importFlows}</td>
+                      <td>{partner.importShare.toFixed(1)}%</td>
+                      <td>{partner.exportFlows}</td>
+                      <td>{partner.exportShare.toFixed(1)}%</td>
+                      <td>{partner.totalFlows}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No partner matrix rows yet.</p>
+        )}
       </Card>
 
       <Card
