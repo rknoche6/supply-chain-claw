@@ -73,6 +73,8 @@ type HomePageProps = {
   searchParams?: {
     recordCategory?: string;
     recordYear?: string;
+    recordSort?: string;
+    recordLimit?: string;
   };
 };
 
@@ -94,6 +96,27 @@ export default function HomePage({ searchParams }: HomePageProps) {
     yearOptions.some((year) => String(year) === (searchParams?.recordYear ?? ""))
       ? (searchParams?.recordYear ?? "all")
       : "all";
+  const selectedRecordSort =
+    searchParams?.recordSort === "value-desc" ||
+    searchParams?.recordSort === "value-asc" ||
+    searchParams?.recordSort === "material-asc"
+      ? searchParams.recordSort
+      : "year-desc";
+  const selectedRecordLimit =
+    searchParams?.recordLimit === "10" ||
+    searchParams?.recordLimit === "20" ||
+    searchParams?.recordLimit === "50"
+      ? Number(searchParams.recordLimit)
+      : 20;
+
+  const recordSortLabel =
+    selectedRecordSort === "value-desc"
+      ? "highest value first"
+      : selectedRecordSort === "value-asc"
+        ? "lowest value first"
+        : selectedRecordSort === "material-asc"
+          ? "material A–Z"
+          : "newest year first";
 
   const recentHighConfidenceRows = rawMaterials
     .filter(
@@ -123,10 +146,22 @@ export default function HomePage({ searchParams }: HomePageProps) {
           sourceUrl: point.sourceUrl,
         }))
     )
-    .sort(
-      (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
-    )
-    .slice(0, 20);
+    .sort((a, b) => {
+      if (selectedRecordSort === "value-desc") {
+        return b.value - a.value || b.year - a.year || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (selectedRecordSort === "value-asc") {
+        return a.value - b.value || b.year - a.year || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (selectedRecordSort === "material-asc") {
+        return a.materialName.localeCompare(b.materialName) || b.year - a.year || b.value - a.value;
+      }
+
+      return b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName);
+    })
+    .slice(0, selectedRecordLimit);
 
   return (
     <Container>
@@ -258,6 +293,25 @@ export default function HomePage({ searchParams }: HomePageProps) {
             </select>
           </label>
 
+          <label>
+            Sort
+            <select name="recordSort" defaultValue={selectedRecordSort}>
+              <option value="year-desc">Newest year first</option>
+              <option value="value-desc">Highest value first</option>
+              <option value="value-asc">Lowest value first</option>
+              <option value="material-asc">Material A-Z</option>
+            </select>
+          </label>
+
+          <label>
+            Rows
+            <select name="recordLimit" defaultValue={String(selectedRecordLimit)}>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+
           <button type="submit" className="secondaryButton">
             Apply filters
           </button>
@@ -267,7 +321,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
         </form>
 
         <p className="sectionIntro">
-          Showing {recentHighConfidenceRows.length} high-confidence records in current filter scope.
+          Showing {recentHighConfidenceRows.length} high-confidence records in current filter scope
+          (sorted by {recordSortLabel}).
         </p>
 
         {recentHighConfidenceRows.length > 0 ? (
