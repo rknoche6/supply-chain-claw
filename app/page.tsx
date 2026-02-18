@@ -3,6 +3,7 @@ import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import ExplorerCommandSearch from "./explorer-command-search";
 import { getCountryProfiles } from "../lib/countries";
 import { getDataPointConfidence, rawMaterials } from "../lib/raw-materials";
+import { tradeFlows } from "../lib/trade-data";
 
 const countryProfiles = getCountryProfiles();
 const allDataPoints = rawMaterials.flatMap((material) => material.dataPoints);
@@ -25,6 +26,42 @@ const compareShortcut =
         highConfidenceOnly: "1",
       }).toString()}`
     : "/compare";
+
+const countrySlugByName = new Map(countryProfiles.map((country) => [country.name, country.slug]));
+
+const topImporterRows = Array.from(
+  tradeFlows.reduce((map, flow) => {
+    flow.topImporters.forEach((countryName) => {
+      map.set(countryName, (map.get(countryName) ?? 0) + 1);
+    });
+
+    return map;
+  }, new Map<string, number>())
+)
+  .map(([name, flowCount]) => ({
+    name,
+    flowCount,
+    slug: countrySlugByName.get(name) ?? null,
+  }))
+  .sort((a, b) => b.flowCount - a.flowCount || a.name.localeCompare(b.name))
+  .slice(0, 6);
+
+const topExporterRows = Array.from(
+  tradeFlows.reduce((map, flow) => {
+    flow.topExporters.forEach((countryName) => {
+      map.set(countryName, (map.get(countryName) ?? 0) + 1);
+    });
+
+    return map;
+  }, new Map<string, number>())
+)
+  .map(([name, flowCount]) => ({
+    name,
+    flowCount,
+    slug: countrySlugByName.get(name) ?? null,
+  }))
+  .sort((a, b) => b.flowCount - a.flowCount || a.name.localeCompare(b.name))
+  .slice(0, 6);
 
 export default function HomePage() {
   return (
@@ -66,6 +103,36 @@ export default function HomePage() {
               <span>Values, units, years, and citations</span>
             </Link>
           ))}
+        </div>
+      </Card>
+
+      <Card
+        title="Importer/exporter snapshot"
+        subtitle="Top countries by appearance in current trade-flow importer/exporter lists."
+      >
+        <div className="gridTwo">
+          <article>
+            <p className="sectionEyebrow">Top importers in captured flows</p>
+            <ol className="miniList">
+              {topImporterRows.map((row) => (
+                <li key={`home-importer-${row.name}`}>
+                  {row.slug ? <Link href={`/countries/${row.slug}`}>{row.name}</Link> : row.name} —{" "}
+                  {row.flowCount} flows
+                </li>
+              ))}
+            </ol>
+          </article>
+          <article>
+            <p className="sectionEyebrow">Top exporters in captured flows</p>
+            <ol className="miniList">
+              {topExporterRows.map((row) => (
+                <li key={`home-exporter-${row.name}`}>
+                  {row.slug ? <Link href={`/countries/${row.slug}`}>{row.name}</Link> : row.name} —{" "}
+                  {row.flowCount} flows
+                </li>
+              ))}
+            </ol>
+          </article>
         </div>
       </Card>
 
