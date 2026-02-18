@@ -9,6 +9,41 @@ type CountryPageProps = {
   };
 };
 
+type PartnerConcentration = {
+  total: number;
+  topShare: number;
+  hhi: number;
+  riskBand: "High" | "Moderate" | "Low";
+};
+
+function getPartnerConcentration(sharedFlows: number[]): PartnerConcentration {
+  const total = sharedFlows.reduce((sum, value) => sum + value, 0);
+
+  if (total === 0) {
+    return {
+      total: 0,
+      topShare: 0,
+      hhi: 0,
+      riskBand: "Low",
+    };
+  }
+
+  const topShare = (Math.max(...sharedFlows) / total) * 100;
+  const hhi = sharedFlows.reduce((sum, value) => {
+    const share = value / total;
+    return sum + share * share * 10000;
+  }, 0);
+
+  const riskBand = hhi >= 2500 ? "High" : hhi >= 1500 ? "Moderate" : "Low";
+
+  return {
+    total,
+    topShare,
+    hhi,
+    riskBand,
+  };
+}
+
 export function generateStaticParams() {
   return getCountryProfiles().map((country) => ({ slug: country.slug }));
 }
@@ -26,6 +61,12 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
 
   const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
   const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
+  const importConcentration = getPartnerConcentration(
+    importPartners.map((partner) => partner.sharedFlows)
+  );
+  const exportConcentration = getPartnerConcentration(
+    exportPartners.map((partner) => partner.sharedFlows)
+  );
 
   return (
     <Container>
@@ -57,6 +98,44 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
             )}
           />
         </StatGrid>
+      </Card>
+
+      <Card
+        title="Dependency indicators"
+        subtitle="Partner concentration metrics to flag potential exposure when a small number of counterparties dominate flows."
+      >
+        <div className="spotlightGrid">
+          <article className="statCard">
+            <p className="statLabel">Import-partner concentration (HHI)</p>
+            <p className="statValue">
+              {Math.round(importConcentration.hhi).toLocaleString()} ·{" "}
+              {importConcentration.riskBand}
+            </p>
+            <p className="statHint">
+              Top partner share: {importConcentration.topShare.toFixed(1)}% of tracked import links
+            </p>
+          </article>
+          <article className="statCard">
+            <p className="statLabel">Export-partner concentration (HHI)</p>
+            <p className="statValue">
+              {Math.round(exportConcentration.hhi).toLocaleString()} ·{" "}
+              {exportConcentration.riskBand}
+            </p>
+            <p className="statHint">
+              Top partner share: {exportConcentration.topShare.toFixed(1)}% of tracked export links
+            </p>
+          </article>
+          <article className="statCard">
+            <p className="statLabel">Tracked partner links</p>
+            <p className="statValue">
+              {importConcentration.total.toLocaleString()} import ·{" "}
+              {exportConcentration.total.toLocaleString()} export
+            </p>
+            <p className="statHint">
+              Based on partner frequencies in the current explorer dataset.
+            </p>
+          </article>
+        </div>
       </Card>
 
       <Card
