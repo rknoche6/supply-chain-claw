@@ -1094,6 +1094,10 @@ export default function TradeExplorer() {
                     : route.materialMatchQuality === "partial"
                       ? "Partial material match"
                       : "No direct material match";
+                const laneRoleLabel =
+                  route.topExporter && route.topImporter
+                    ? `${route.topExporter} (exporter) → ${route.topImporter} (importer)`
+                    : "Primary exporter/importer pair not identified";
 
                 return (
                   <button
@@ -1105,6 +1109,7 @@ export default function TradeExplorer() {
                   >
                     <span>{route.product}</span>
                     <span>{route.stops.join(" → ")}</span>
+                    <span>{laneRoleLabel}</span>
                     <span>
                       Lane material coverage: {laneCoverageLabel} · Route evidence:{" "}
                       {routeMaterialLabel}
@@ -1116,6 +1121,12 @@ export default function TradeExplorer() {
             <p className="sectionIntro">
               Route evidence legend: Full = 100% of lane flows linked to material datasets, Partial
               = some linked flows, Gap = no linked flows yet.
+            </p>
+            <p className="sectionIntro">
+              Exchange clarity in this view:{" "}
+              <strong>{exchangeCoverageSnapshot.fullCoverage}</strong> full lanes ·{" "}
+              <strong>{exchangeCoverageSnapshot.partialCoverage}</strong> partial lanes ·{" "}
+              <strong>{exchangeCoverageSnapshot.noCoverage}</strong> gap lanes.
             </p>
 
             {selectedRoute ? (
