@@ -407,6 +407,21 @@ export default function TradeExplorer() {
     );
   }, [primaryExchangeLanes, selectedRoute]);
 
+  const selectedRouteLaneRank = useMemo(() => {
+    if (!selectedRouteLaneCoverage) {
+      return null;
+    }
+
+    const rank =
+      primaryExchangeLanes.findIndex(
+        (lane) =>
+          lane.exporter === selectedRouteLaneCoverage.exporter &&
+          lane.importer === selectedRouteLaneCoverage.importer
+      ) + 1;
+
+    return rank > 0 ? rank : null;
+  }, [primaryExchangeLanes, selectedRouteLaneCoverage]);
+
   const primaryExchangeCoverageGaps = useMemo(() => {
     return [...primaryExchangeLanes]
       .sort(
@@ -874,17 +889,49 @@ export default function TradeExplorer() {
                       )}
                     </li>
                     {selectedRouteLaneCoverage ? (
-                      <li>
-                        Lane coverage: <strong>{selectedRouteLaneCoverage.matchedFlowCount}</strong>{" "}
-                        of <strong>{selectedRouteLaneCoverage.flowCount}</strong> flows with
-                        material links (
-                        <strong>
-                          {selectedRouteLaneCoverage.materialCoverageShare.toFixed(0)}%
-                        </strong>
-                        )
-                      </li>
+                      <>
+                        <li>
+                          Lane rank by repeated flows:{" "}
+                          <strong>#{selectedRouteLaneRank ?? "—"}</strong> of{" "}
+                          <strong>{primaryExchangeLanes.length}</strong>
+                        </li>
+                        <li>
+                          Lane flow share in current view:{" "}
+                          <strong>{selectedRouteLaneCoverage.laneShare.toFixed(0)}%</strong>
+                        </li>
+                        <li>
+                          Lane coverage:{" "}
+                          <strong>{selectedRouteLaneCoverage.matchedFlowCount}</strong> of{" "}
+                          <strong>{selectedRouteLaneCoverage.flowCount}</strong> flows with material
+                          links (
+                          <strong>
+                            {selectedRouteLaneCoverage.materialCoverageShare.toFixed(0)}%
+                          </strong>
+                          )
+                        </li>
+                        <li>
+                          Coverage status:{" "}
+                          {selectedRouteLaneCoverage.materialCoverageShare >= 100 ? (
+                            <strong>Full evidence linked</strong>
+                          ) : selectedRouteLaneCoverage.materialCoverageShare > 0 ? (
+                            <strong>Partial evidence linked</strong>
+                          ) : (
+                            <strong>No direct material evidence yet</strong>
+                          )}
+                        </li>
+                      </>
                     ) : null}
                   </ul>
+                  {selectedRouteLaneCoverage ? (
+                    <p className="sectionIntro">
+                      Next best action:{" "}
+                      {selectedRouteLaneCoverage.materialCoverageShare >= 100
+                        ? "optimize route decisions first (material evidence is complete)."
+                        : selectedRouteLaneCoverage.materialCoverageShare > 0
+                          ? "validate missing material links before committing lane-level decisions."
+                          : "prioritize dataset expansion for this lane before route optimization."}
+                    </p>
+                  ) : null}
                   {!selectedRoute.matchedMaterial ? (
                     <button
                       type="button"
