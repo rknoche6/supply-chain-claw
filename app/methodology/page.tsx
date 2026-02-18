@@ -70,9 +70,41 @@ function getFreshnessSummary() {
     .sort((a, b) => a.materialName.localeCompare(b.materialName));
 }
 
+function getValidationSummary() {
+  return rawMaterials
+    .map((material) => {
+      const records = material.dataPoints;
+      const exactRecords = records.filter(
+        (point) =>
+          Number.isFinite(point.value) &&
+          point.unit.trim().length > 0 &&
+          Number.isInteger(point.year) &&
+          point.sourceName.trim().length > 0 &&
+          point.sourceUrl.trim().length > 0
+      ).length;
+      const sourceLinkedRecords = records.filter(
+        (point) => point.sourceUrl.trim().length > 0
+      ).length;
+
+      return {
+        materialName: material.name,
+        materialSlug: material.slug,
+        recordCount: records.length,
+        exactRecords,
+        exactCoveragePct: records.length > 0 ? (exactRecords / records.length) * 100 : 0,
+        sourceLinkedRecords,
+        sourceLinkedPct: records.length > 0 ? (sourceLinkedRecords / records.length) * 100 : 0,
+        metricCount: new Set(records.map((point) => point.metric)).size,
+        unitCount: new Set(records.map((point) => point.unit)).size,
+      };
+    })
+    .sort((a, b) => a.materialName.localeCompare(b.materialName));
+}
+
 export default function MethodologyPage() {
   const sources = getUniqueSources();
   const freshnessSummary = getFreshnessSummary();
+  const validationSummary = getValidationSummary();
   const latestUpdate = rawMaterials
     .map((item) => item.updatedAt)
     .sort((a, b) => b.localeCompare(a))[0];
@@ -169,6 +201,44 @@ export default function MethodologyPage() {
                         ? ` (${row.latestYear})`
                         : ""}
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card
+        title="Record validation matrix"
+        subtitle="Material-level checks for exact numeric rows, source-link coverage, and measurement consistency."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Total records</th>
+                <th>Exact-field records</th>
+                <th>Exact-field coverage</th>
+                <th>Source-link coverage</th>
+                <th>Metrics mapped</th>
+                <th>Units mapped</th>
+              </tr>
+            </thead>
+            <tbody>
+              {validationSummary.map((row) => (
+                <tr key={`${row.materialSlug}-validation`}>
+                  <td>
+                    <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                  </td>
+                  <td>{row.recordCount}</td>
+                  <td>
+                    {row.exactRecords}/{row.recordCount}
+                  </td>
+                  <td>{row.exactCoveragePct.toFixed(1)}%</td>
+                  <td>{row.sourceLinkedPct.toFixed(1)}%</td>
+                  <td>{row.metricCount}</td>
+                  <td>{row.unitCount}</td>
                 </tr>
               ))}
             </tbody>
