@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Card, SectionHeader } from "./components";
+import { Card, SectionHeader, StatCard, StatGrid } from "./components";
 import {
   getDataPointConfidence,
   getFreshnessLabel,
@@ -50,6 +50,32 @@ export default function RawMaterialsExplorer() {
       }));
   }, [category, country, query]);
 
+  const countryLeaderboard = useMemo(() => {
+    const stats = new Map<string, { records: number; materials: Set<string> }>();
+
+    filtered.forEach((material) => {
+      material.dataPoints.forEach((point) => {
+        const current = stats.get(point.country) ?? { records: 0, materials: new Set<string>() };
+        current.records += 1;
+        current.materials.add(material.slug);
+        stats.set(point.country, current);
+      });
+    });
+
+    return Array.from(stats.entries())
+      .map(([name, value]) => ({
+        name,
+        records: value.records,
+        materials: value.materials.size,
+      }))
+      .sort(
+        (a, b) => b.records - a.records || b.materials - a.materials || a.name.localeCompare(b.name)
+      )
+      .slice(0, 8);
+  }, [filtered]);
+
+  const totalVisibleRecords = filtered.reduce((sum, item) => sum + item.dataPoints.length, 0);
+
   return (
     <Card>
       <SectionHeader
@@ -93,6 +119,30 @@ export default function RawMaterialsExplorer() {
           </select>
         </label>
       </div>
+
+      <StatGrid>
+        <StatCard label="Materials in view" value={String(filtered.length)} />
+        <StatCard label="Numeric records in view" value={String(totalVisibleRecords)} />
+        <article className="statCard">
+          <p className="statLabel">Top countries in current filters</p>
+          <ul className="miniList">
+            {countryLeaderboard.map((item) => (
+              <li key={item.name}>
+                <button
+                  type="button"
+                  className={`quickFilterButton ${country === item.name ? "isActive" : ""}`}
+                  onClick={() => setCountry(item.name)}
+                >
+                  {item.name}{" "}
+                  <span>
+                    ({item.records} records · {item.materials} materials)
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+      </StatGrid>
 
       {filtered.map((item) => (
         <article key={item.name} className="flowCard">
