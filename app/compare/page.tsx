@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../components";
 import { getCountryProfiles } from "../../lib/countries";
-import { rawMaterials } from "../../lib/raw-materials";
+import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
 const countries = getCountryProfiles();
 
@@ -27,11 +27,24 @@ function getMaterialStats(slug: string) {
   const sorted = [...material.dataPoints].sort((a, b) => b.value - a.value);
   const top = sorted[0];
   const total = sorted.reduce((acc, point) => acc + point.value, 0);
+  const latestYear = Math.max(...material.dataPoints.map((point) => point.year));
+  const highConfidenceCount = material.dataPoints.filter(
+    (point) => getDataPointConfidence(point) === "High"
+  ).length;
+  const currentOrRecentCount = material.dataPoints.filter((point) => {
+    const freshness = getFreshnessLabel(point.year, material.updatedAt);
+    return freshness === "Current" || freshness === "Recent";
+  }).length;
+  const uniqueSourceCount = new Set(material.dataPoints.map((point) => point.sourceUrl)).size;
 
   return {
     material,
     top,
     total,
+    latestYear,
+    highConfidenceCount,
+    currentOrRecentCount,
+    uniqueSourceCount,
   };
 }
 
@@ -376,6 +389,22 @@ export default function ComparePage() {
                     value={`${item.total.toLocaleString()} ${item.top.unit}`}
                     hint="Current record set"
                   />
+                  <StatCard label="Latest year" value={String(item.latestYear)} />
+                  <StatCard
+                    label="High-confidence records"
+                    value={`${item.highConfidenceCount}/${item.material.dataPoints.length}`}
+                    hint="Source + unit + year completeness"
+                  />
+                  <StatCard
+                    label="Current/recent records"
+                    value={`${item.currentOrRecentCount}/${item.material.dataPoints.length}`}
+                    hint="Freshness from updated dataset"
+                  />
+                  <StatCard
+                    label="Unique sources"
+                    value={String(item.uniqueSourceCount)}
+                    hint="Distinct citation links"
+                  />
                 </StatGrid>
                 <p className="sectionIntro">
                   Source: <a href={item.top.sourceUrl}>{item.top.sourceName}</a>
@@ -433,6 +462,17 @@ export default function ComparePage() {
                   </p>
                 </>
               )}
+            </article>
+            <article className="statCard">
+              <p className="statLabel">Data quality readiness</p>
+              <p className="statValue">
+                {leftMaterial.highConfidenceCount}/{leftMaterial.material.dataPoints.length} vs{" "}
+                {rightMaterial.highConfidenceCount}/{rightMaterial.material.dataPoints.length}
+              </p>
+              <p className="statHint">
+                High-confidence records · {leftMaterial.material.name} vs{" "}
+                {rightMaterial.material.name}
+              </p>
             </article>
           </div>
         ) : null}
