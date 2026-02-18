@@ -68,6 +68,9 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     exportPartners.map((partner) => partner.sharedFlows)
   );
 
+  const getPartnerShare = (sharedFlows: number, totalFlows: number) =>
+    totalFlows > 0 ? (sharedFlows / totalFlows) * 100 : 0;
+
   return (
     <Container>
       <header className="pageHeader">
@@ -159,11 +162,16 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
                         <tr>
                           <th>Partner country</th>
                           <th>Shared flows</th>
+                          <th>Share of import links</th>
                         </tr>
                       </thead>
                       <tbody>
                         {importPartners.map((partner) => {
                           const slug = partnerSlugByName.get(partner.name);
+                          const share = getPartnerShare(
+                            partner.sharedFlows,
+                            importConcentration.total
+                          );
 
                           return (
                             <tr key={`${country.slug}-${partner.role}-${partner.name}`}>
@@ -175,6 +183,7 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
                                 )}
                               </td>
                               <td>{partner.sharedFlows}</td>
+                              <td>{share.toFixed(1)}%</td>
                             </tr>
                           );
                         })}
@@ -195,11 +204,16 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
                         <tr>
                           <th>Partner country</th>
                           <th>Shared flows</th>
+                          <th>Share of export links</th>
                         </tr>
                       </thead>
                       <tbody>
                         {exportPartners.map((partner) => {
                           const slug = partnerSlugByName.get(partner.name);
+                          const share = getPartnerShare(
+                            partner.sharedFlows,
+                            exportConcentration.total
+                          );
 
                           return (
                             <tr key={`${country.slug}-${partner.role}-${partner.name}`}>
@@ -211,6 +225,7 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
                                 )}
                               </td>
                               <td>{partner.sharedFlows}</td>
+                              <td>{share.toFixed(1)}%</td>
                             </tr>
                           );
                         })}
