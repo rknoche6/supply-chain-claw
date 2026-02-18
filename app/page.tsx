@@ -3,7 +3,12 @@ import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import ExplorerCommandSearch from "./explorer-command-search";
 import TradeExplorer from "./trade-explorer";
 import { getCountryProfiles } from "../lib/countries";
-import { getDataPointConfidence, rawMaterials, type MaterialCategory } from "../lib/raw-materials";
+import {
+  getDataPointConfidence,
+  getFreshnessLabel,
+  rawMaterials,
+  type MaterialCategory,
+} from "../lib/raw-materials";
 import { tradeFlows } from "../lib/trade-data";
 
 const countryProfiles = getCountryProfiles();
@@ -144,6 +149,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
           year: point.year,
           sourceName: point.sourceName,
           sourceUrl: point.sourceUrl,
+          freshness: getFreshnessLabel(point.year, material.updatedAt),
         }))
     )
     .sort((a, b) => {
@@ -335,6 +341,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   <th>Country</th>
                   <th>Value</th>
                   <th>Year</th>
+                  <th>Freshness</th>
                   <th>Source</th>
                 </tr>
               </thead>
@@ -356,6 +363,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                       {row.value.toLocaleString()} {row.unit}
                     </td>
                     <td>{row.year}</td>
+                    <td>{row.freshness}</td>
                     <td>
                       <a href={row.sourceUrl} target="_blank" rel="noreferrer">
                         {row.sourceName}
