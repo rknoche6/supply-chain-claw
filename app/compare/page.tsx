@@ -242,6 +242,7 @@ export default function ComparePage() {
           directlyComparable && rightRecord.value !== 0 && delta !== null
             ? delta / rightRecord.value
             : null;
+        const sameSourceCitation = leftRecord.sourceUrl === rightRecord.sourceUrl;
 
         return {
           materialSlug,
@@ -250,6 +251,7 @@ export default function ComparePage() {
           rightRecord,
           directlyComparable,
           yearMatched,
+          sameSourceCitation,
           delta,
           deltaPercent,
         };
@@ -327,6 +329,7 @@ export default function ComparePage() {
       rightScopedRecordCount: rightScopedRecords.length,
       sharedMaterialRows,
       comparableSharedCount,
+      sameSourceSharedCount: allSharedMaterialRows.filter((row) => row.sameSourceCitation).length,
       allSharedMaterialCount: allSharedMaterialRows.length,
       matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
       searchMatchedCount: searchedRows.length,
@@ -744,6 +747,11 @@ export default function ComparePage() {
                 hint={`${leftCountry.name} vs ${rightCountry.name}`}
               />
               <StatCard
+                label="Shared rows with same citation"
+                value={`${countryMaterialComparison.sameSourceSharedCount}/${countryMaterialComparison.allSharedMaterialCount}`}
+                hint="Rows where left/right records point to the same source URL"
+              />
+              <StatCard
                 label="Shared materials"
                 value={String(countryMaterialComparison.sharedMaterialRows.length)}
                 hint={
@@ -769,6 +777,7 @@ export default function ComparePage() {
                       <th>Delta</th>
                       <th>Delta %</th>
                       <th>Year alignment</th>
+                      <th>Citation alignment</th>
                       <th>Data quality</th>
                       <th>Left source</th>
                       <th>Right source</th>
@@ -803,6 +812,7 @@ export default function ComparePage() {
                             ? `${row.leftRecord.year} (matched)`
                             : `${row.leftRecord.year} vs ${row.rightRecord.year}`}
                         </td>
+                        <td>{row.sameSourceCitation ? "Same source" : "Different source"}</td>
                         <td>
                           {row.leftRecord.confidence}/{row.leftRecord.freshness} vs{" "}
                           {row.rightRecord.confidence}/{row.rightRecord.freshness}
