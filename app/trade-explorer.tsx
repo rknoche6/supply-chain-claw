@@ -56,10 +56,14 @@ export default function TradeExplorer() {
     return ["All countries", ...Array.from(all).sort((a, b) => a.localeCompare(b))];
   }, []);
 
+  const countryProfiles = useMemo(() => getCountryProfiles(), []);
+
   const countrySlugSet = useMemo(
-    () => new Set(getCountryProfiles().map((profile) => profile.slug)),
-    []
+    () => new Set(countryProfiles.map((profile) => profile.slug)),
+    [countryProfiles]
   );
+
+  const fallbackCompareSlug = countryProfiles[0]?.slug ?? "";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -126,6 +130,44 @@ export default function TradeExplorer() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
   }, [filtered]);
+
+  const countryRoleLeaderboard = useMemo(() => {
+    const counts = new Map<string, { importerCount: number; exporterCount: number }>();
+
+    for (const flow of filtered) {
+      for (const importer of flow.topImporters) {
+        const existing = counts.get(importer) ?? { importerCount: 0, exporterCount: 0 };
+        existing.importerCount += 1;
+        counts.set(importer, existing);
+      }
+
+      for (const exporter of flow.topExporters) {
+        const existing = counts.get(exporter) ?? { importerCount: 0, exporterCount: 0 };
+        existing.exporterCount += 1;
+        counts.set(exporter, existing);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, row]) => {
+        const slug = toCountrySlug(name);
+        const importerShare = filtered.length > 0 ? (row.importerCount / filtered.length) * 100 : 0;
+        const exporterShare = filtered.length > 0 ? (row.exporterCount / filtered.length) * 100 : 0;
+
+        return {
+          name,
+          slug,
+          hasDetailPage: countrySlugSet.has(slug),
+          importerCount: row.importerCount,
+          exporterCount: row.exporterCount,
+          totalCount: row.importerCount + row.exporterCount,
+          importerShare,
+          exporterShare,
+        };
+      })
+      .sort((a, b) => b.totalCount - a.totalCount || a.name.localeCompare(b.name))
+      .slice(0, 12);
+  }, [countrySlugSet, filtered]);
 
   const countrySpotlight = useMemo(() => {
     if (country === "All countries") {
@@ -365,6 +407,65 @@ export default function TradeExplorer() {
             </ul>
           </article>
         </StatGrid>
+      </Card>
+
+      <Card
+        title="Country role leaderboard"
+        subtitle="Importer/exporter appearance by country in the current filtered flow set, with direct country drilldowns."
+      >
+        {countryRoleLeaderboard.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Country</th>
+                  <th>Importer appearances</th>
+                  <th>Exporter appearances</th>
+                  <th>Total role appearances</th>
+                  <th>Drilldowns</th>
+                </tr>
+              </thead>
+              <tbody>
+                {countryRoleLeaderboard.map((row) => {
+                  const compareRightSlug =
+                    row.slug === fallbackCompareSlug
+                      ? (countryProfiles.find((profile) => profile.slug !== row.slug)?.slug ??
+                        fallbackCompareSlug)
+                      : fallbackCompareSlug;
+                  const compareHref = row.hasDetailPage
+                    ? `/compare?leftCountry=${row.slug}&rightCountry=${compareRightSlug}`
+                    : null;
+
+                  return (
+                    <tr key={`leaderboard-${row.name}`}>
+                      <td>{row.name}</td>
+                      <td>
+                        {row.importerCount} ({row.importerShare.toFixed(0)}%)
+                      </td>
+                      <td>
+                        {row.exporterCount} ({row.exporterShare.toFixed(0)}%)
+                      </td>
+                      <td>{row.totalCount}</td>
+                      <td>
+                        {row.hasDetailPage ? (
+                          <>
+                            <Link href={`/countries/${row.slug}`}>Country</Link>
+                            {" · "}
+                            <Link href={compareHref ?? "/compare"}>Compare</Link>
+                          </>
+                        ) : (
+                          "No country page yet"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No country role rows for the current filters.</p>
+        )}
       </Card>
 
       {countrySpotlight ? (
