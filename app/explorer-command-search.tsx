@@ -12,9 +12,35 @@ type SearchResult = {
   key: string;
   name: string;
   href: string;
-  type: "Material" | "Country";
+  type: "Material" | "Country" | "View";
   meta: string;
 };
+
+function findCountrySlugByQuery(term: string) {
+  const normalized = term.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    countryProfiles.find((country) => country.name.toLowerCase() === normalized)?.slug ??
+    countryProfiles.find((country) => country.name.toLowerCase().includes(normalized))?.slug ??
+    null
+  );
+}
+
+function findMaterialSlugByQuery(term: string) {
+  const normalized = term.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    rawMaterials.find((material) => material.name.toLowerCase() === normalized)?.slug ??
+    rawMaterials.find((material) => material.name.toLowerCase().includes(normalized))?.slug ??
+    null
+  );
+}
 
 export default function ExplorerCommandSearch() {
   const [query, setQuery] = useState("");
@@ -59,9 +85,80 @@ export default function ExplorerCommandSearch() {
         meta: `${country.roleBreakdown.totalFlows} flows · ${country.materialRecords.length} material records`,
       }));
 
-    return [...materialMatches, ...countryMatches]
+    const viewMatches = [] as SearchResult[];
+
+    if (
+      normalizedQuery.includes("compare") ||
+      normalizedQuery.includes("vs") ||
+      normalizedQuery.includes("versus")
+    ) {
+      viewMatches.push({
+        key: "view-compare",
+        name: "Open compare view",
+        href: "/compare",
+        type: "View",
+        meta: "Country-vs-country and material-vs-material analysis",
+      });
+    }
+
+    if (
+      normalizedQuery.includes("method") ||
+      normalizedQuery.includes("confidence") ||
+      normalizedQuery.includes("source")
+    ) {
+      viewMatches.push({
+        key: "view-methodology",
+        name: "Open methodology",
+        href: "/methodology",
+        type: "View",
+        meta: "Source, freshness, and confidence rules",
+      });
+    }
+
+    const vsMatch = normalizedQuery.match(/^(.+?)\s+(?:vs|versus)\s+(.+)$/i);
+    if (vsMatch) {
+      const left = vsMatch[1];
+      const right = vsMatch[2];
+
+      const leftCountrySlug = findCountrySlugByQuery(left);
+      const rightCountrySlug = findCountrySlugByQuery(right);
+      const leftMaterialSlug = findMaterialSlugByQuery(left);
+      const rightMaterialSlug = findMaterialSlugByQuery(right);
+
+      if (leftCountrySlug && rightCountrySlug && leftCountrySlug !== rightCountrySlug) {
+        const params = new URLSearchParams({
+          leftCountry: leftCountrySlug,
+          rightCountry: rightCountrySlug,
+        });
+
+        viewMatches.push({
+          key: `view-compare-country-${leftCountrySlug}-${rightCountrySlug}`,
+          name: `Compare countries: ${left.trim()} vs ${right.trim()}`,
+          href: `/compare?${params.toString()}`,
+          type: "View",
+          meta: "Prefilled country comparison",
+        });
+      }
+
+      if (leftMaterialSlug && rightMaterialSlug && leftMaterialSlug !== rightMaterialSlug) {
+        const params = new URLSearchParams({
+          leftMaterial: leftMaterialSlug,
+          rightMaterial: rightMaterialSlug,
+        });
+
+        viewMatches.push({
+          key: `view-compare-material-${leftMaterialSlug}-${rightMaterialSlug}`,
+          name: `Compare materials: ${left.trim()} vs ${right.trim()}`,
+          href: `/compare?${params.toString()}`,
+          type: "View",
+          meta: "Prefilled material comparison",
+        });
+      }
+    }
+
+    return [...viewMatches, ...materialMatches, ...countryMatches]
       .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, 12);
+      .slice(0, 14);
   }, [query]);
 
   return (
@@ -69,7 +166,7 @@ export default function ExplorerCommandSearch() {
       <SectionHeader
         eyebrow="Explorer command center"
         title="Jump directly to country and material detail pages"
-        description="Search by country, material, category, or product keyword to open focused detail views."
+        description="Search by country, material, category, or product keyword. Use ‘X vs Y’ to open a prefilled compare view."
       />
 
       <label>
@@ -77,7 +174,7 @@ export default function ExplorerCommandSearch() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="lithium, chile, fertilizer, copper..."
+          placeholder="lithium, chile, fertilizer, copper, chile vs peru..."
         />
       </label>
 
