@@ -86,11 +86,15 @@ export default function ComparePage() {
     }
 
     const sameUnit = leftMaterial.top.unit === rightMaterial.top.unit;
+    const sameMetric = leftMaterial.top.metric === rightMaterial.top.metric;
+    const directlyComparable = sameUnit && sameMetric;
 
     return {
       sameUnit,
-      totalDelta: leftMaterial.total - rightMaterial.total,
-      topProducerGap: leftMaterial.top.value - rightMaterial.top.value,
+      sameMetric,
+      directlyComparable,
+      totalDelta: directlyComparable ? leftMaterial.total - rightMaterial.total : null,
+      topProducerGap: directlyComparable ? leftMaterial.top.value - rightMaterial.top.value : null,
     };
   }, [leftMaterial, rightMaterial]);
 
@@ -388,27 +392,47 @@ export default function ComparePage() {
           <div className="spotlightGrid">
             <article className="statCard">
               <p className="statLabel">Total captured delta</p>
-              <p className="statValue">
-                {materialComparison.totalDelta >= 0 ? "+" : ""}
-                {materialComparison.totalDelta.toLocaleString()}
-                {materialComparison.sameUnit ? ` ${leftMaterial.top.unit}` : ""}
-              </p>
-              <p className="statHint">
-                {leftMaterial.material.name} vs {rightMaterial.material.name}
-                {materialComparison.sameUnit ? "" : " (unit-aware reading required)"}
-              </p>
+              {materialComparison.directlyComparable && materialComparison.totalDelta !== null ? (
+                <>
+                  <p className="statValue">
+                    {materialComparison.totalDelta >= 0 ? "+" : ""}
+                    {materialComparison.totalDelta.toLocaleString()} {leftMaterial.top.unit}
+                  </p>
+                  <p className="statHint">
+                    {leftMaterial.material.name} vs {rightMaterial.material.name}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="statValue">Not directly comparable</p>
+                  <p className="statHint">
+                    Left: {leftMaterial.top.metric} ({leftMaterial.top.unit}) · Right:{" "}
+                    {rightMaterial.top.metric} ({rightMaterial.top.unit})
+                  </p>
+                </>
+              )}
             </article>
             <article className="statCard">
               <p className="statLabel">Top producer value gap</p>
-              <p className="statValue">
-                {materialComparison.topProducerGap >= 0 ? "+" : ""}
-                {materialComparison.topProducerGap.toLocaleString()}
-                {materialComparison.sameUnit ? ` ${leftMaterial.top.unit}` : ""}
-              </p>
-              <p className="statHint">
-                {leftMaterial.top.country} vs {rightMaterial.top.country}
-                {materialComparison.sameUnit ? "" : " (different units)"}
-              </p>
+              {materialComparison.directlyComparable &&
+              materialComparison.topProducerGap !== null ? (
+                <>
+                  <p className="statValue">
+                    {materialComparison.topProducerGap >= 0 ? "+" : ""}
+                    {materialComparison.topProducerGap.toLocaleString()} {leftMaterial.top.unit}
+                  </p>
+                  <p className="statHint">
+                    {leftMaterial.top.country} vs {rightMaterial.top.country}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="statValue">Not directly comparable</p>
+                  <p className="statHint">
+                    Compare materials with the same metric and unit for exact deltas.
+                  </p>
+                </>
+              )}
             </article>
           </div>
         ) : null}
