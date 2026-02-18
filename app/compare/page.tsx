@@ -109,6 +109,7 @@ export default function ComparePage() {
   const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
   const [matchedYearOnly, setMatchedYearOnly] = useState(false);
   const [comparableOnly, setComparableOnly] = useState(false);
+  const [sharedMaterialQuery, setSharedMaterialQuery] = useState("");
   const [sharedMaterialSort, setSharedMaterialSort] = useState<SharedMaterialSort>("material");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -239,7 +240,13 @@ export default function ComparePage() {
       ? yearScopedRows.filter((row) => row.directlyComparable)
       : yearScopedRows;
 
-    const sharedMaterialRows = [...filteredSharedRows].sort((a, b) => {
+    const query = sharedMaterialQuery.trim().toLowerCase();
+
+    const searchedRows = query
+      ? filteredSharedRows.filter((row) => row.materialName.toLowerCase().includes(query))
+      : filteredSharedRows;
+
+    const sharedMaterialRows = [...searchedRows].sort((a, b) => {
       if (sharedMaterialSort === "delta-desc") {
         const left = a.delta ?? Number.NEGATIVE_INFINITY;
         const right = b.delta ?? Number.NEGATIVE_INFINITY;
@@ -286,6 +293,7 @@ export default function ComparePage() {
       comparableSharedCount,
       allSharedMaterialCount: allSharedMaterialRows.length,
       matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
+      searchMatchedCount: searchedRows.length,
     };
   }, [
     highConfidenceOnly,
@@ -293,6 +301,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     rightCountry,
+    sharedMaterialQuery,
     sharedMaterialSort,
   ]);
 
@@ -637,6 +646,15 @@ export default function ComparePage() {
                   <option value="right-value">Highest right-country value</option>
                 </select>
               </label>
+              <label>
+                Material search
+                <input
+                  type="search"
+                  value={sharedMaterialQuery}
+                  onChange={(event) => setSharedMaterialQuery(event.target.value)}
+                  placeholder="Filter shared materials"
+                />
+              </label>
             </div>
 
             <StatGrid>
@@ -669,11 +687,13 @@ export default function ComparePage() {
                 label="Shared materials"
                 value={String(countryMaterialComparison.sharedMaterialRows.length)}
                 hint={
-                  comparableOnly
-                    ? `Directly comparable view (${countryMaterialComparison.comparableSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                    : matchedYearOnly
-                      ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                      : "Materials with records in both selected countries"
+                  sharedMaterialQuery.trim().length > 0
+                    ? `Search matches ${countryMaterialComparison.searchMatchedCount}/${countryMaterialComparison.allSharedMaterialCount}`
+                    : comparableOnly
+                      ? `Directly comparable view (${countryMaterialComparison.comparableSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                      : matchedYearOnly
+                        ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                        : "Materials with records in both selected countries"
                 }
               />
             </StatGrid>
