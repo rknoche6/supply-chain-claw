@@ -84,6 +84,39 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
       };
     });
 
+  const yearlySources = availableYears
+    .map((year) => {
+      const yearPoints = material.dataPoints.filter((point) => point.year === year);
+      const sources = Array.from(
+        yearPoints
+          .reduce((map, point) => {
+            const key = `${point.sourceName}::${point.sourceUrl}`;
+            const existing = map.get(key);
+
+            if (existing) {
+              existing.records += 1;
+            } else {
+              map.set(key, {
+                sourceName: point.sourceName,
+                sourceUrl: point.sourceUrl,
+                records: 1,
+              });
+            }
+
+            return map;
+          }, new Map<string, { sourceName: string; sourceUrl: string; records: number }>())
+          .values()
+      ).sort((a, b) => b.records - a.records || a.sourceName.localeCompare(b.sourceName));
+
+      return {
+        year,
+        countryCount: new Set(yearPoints.map((point) => point.country)).size,
+        recordCount: yearPoints.length,
+        sources,
+      };
+    })
+    .sort((a, b) => b.year - a.year);
+
   return (
     <Container>
       <header className="pageHeader">
@@ -173,6 +206,45 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
                   <td>{entry.recordCount}</td>
                   <td>{entry.highConfidence}</td>
                   <td>{entry.sourceCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card
+        title="Year-by-year citation coverage"
+        subtitle="Source links used per year so data provenance is inspectable without leaving the material page."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Countries in dataset</th>
+                <th>Records</th>
+                <th>Source citations</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearlySources.map((entry) => (
+                <tr key={`${material.slug}-sources-${entry.year}`}>
+                  <td>{entry.year}</td>
+                  <td>{entry.countryCount}</td>
+                  <td>{entry.recordCount}</td>
+                  <td>
+                    <ul className="miniList">
+                      {entry.sources.map((source) => (
+                        <li key={`${entry.year}-${source.sourceName}-${source.sourceUrl}`}>
+                          <a href={source.sourceUrl} target="_blank" rel="noreferrer">
+                            {source.sourceName}
+                          </a>{" "}
+                          ({source.records})
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
                 </tr>
               ))}
             </tbody>
