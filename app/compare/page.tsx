@@ -94,6 +94,7 @@ export default function ComparePage() {
   const [rightMaterialSlug, setRightMaterialSlug] = useState(defaultRightMaterial);
   const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
   const [matchedYearOnly, setMatchedYearOnly] = useState(false);
+  const [comparableOnly, setComparableOnly] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const leftCountry = useMemo(
@@ -215,9 +216,17 @@ export default function ComparePage() {
       })
       .sort((a, b) => a.materialName.localeCompare(b.materialName));
 
-    const sharedMaterialRows = matchedYearOnly
+    const yearScopedRows = matchedYearOnly
       ? allSharedMaterialRows.filter((row) => row.yearMatched)
       : allSharedMaterialRows;
+
+    const sharedMaterialRows = comparableOnly
+      ? yearScopedRows.filter((row) => row.directlyComparable)
+      : yearScopedRows;
+
+    const comparableSharedCount = allSharedMaterialRows.filter(
+      (row) => row.directlyComparable
+    ).length;
 
     return {
       leftHighConfidence,
@@ -231,10 +240,11 @@ export default function ComparePage() {
       leftScopedRecordCount: leftScopedRecords.length,
       rightScopedRecordCount: rightScopedRecords.length,
       sharedMaterialRows,
+      comparableSharedCount,
       allSharedMaterialCount: allSharedMaterialRows.length,
       matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
     };
-  }, [highConfidenceOnly, leftCountry, matchedYearOnly, rightCountry]);
+  }, [highConfidenceOnly, leftCountry, matchedYearOnly, comparableOnly, rightCountry]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -257,6 +267,7 @@ export default function ComparePage() {
     );
     setHighConfidenceOnly(pickBooleanFromQuery(params.get("highConfidenceOnly"), false));
     setMatchedYearOnly(pickBooleanFromQuery(params.get("matchedYearOnly"), false));
+    setComparableOnly(pickBooleanFromQuery(params.get("comparableOnly"), false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -283,6 +294,12 @@ export default function ComparePage() {
       params.delete("matchedYearOnly");
     }
 
+    if (comparableOnly) {
+      params.set("comparableOnly", "1");
+    } else {
+      params.delete("comparableOnly");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", nextUrl);
   }, [
@@ -292,6 +309,7 @@ export default function ComparePage() {
     rightMaterialSlug,
     highConfidenceOnly,
     matchedYearOnly,
+    comparableOnly,
   ]);
 
   const compareParams = useMemo(() => {
@@ -310,6 +328,10 @@ export default function ComparePage() {
       params.set("matchedYearOnly", "1");
     }
 
+    if (comparableOnly) {
+      params.set("comparableOnly", "1");
+    }
+
     return params;
   }, [
     leftCountrySlug,
@@ -318,6 +340,7 @@ export default function ComparePage() {
     rightMaterialSlug,
     highConfidenceOnly,
     matchedYearOnly,
+    comparableOnly,
   ]);
 
   const comparePath = `/compare?${compareParams.toString()}`;
@@ -527,6 +550,15 @@ export default function ComparePage() {
                   ? "Showing matched-year records"
                   : "Show matched-year records only"}
               </button>
+              <button
+                type="button"
+                className={`secondaryButton ${comparableOnly ? "isActive" : ""}`}
+                onClick={() => setComparableOnly((prev) => !prev)}
+              >
+                {comparableOnly
+                  ? "Showing directly comparable rows"
+                  : "Show directly comparable rows only"}
+              </button>
             </div>
 
             <StatGrid>
@@ -559,9 +591,11 @@ export default function ComparePage() {
                 label="Shared materials"
                 value={String(countryMaterialComparison.sharedMaterialRows.length)}
                 hint={
-                  matchedYearOnly
-                    ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                    : "Materials with records in both selected countries"
+                  comparableOnly
+                    ? `Directly comparable view (${countryMaterialComparison.comparableSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                    : matchedYearOnly
+                      ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                      : "Materials with records in both selected countries"
                 }
               />
             </StatGrid>
@@ -626,9 +660,11 @@ export default function ComparePage() {
               </div>
             ) : (
               <p className="sectionIntro">
-                {matchedYearOnly
-                  ? `No matched-year shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
-                  : `No shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`}
+                {comparableOnly
+                  ? `No directly comparable shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
+                  : matchedYearOnly
+                    ? `No matched-year shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
+                    : `No shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`}
               </p>
             )}
           </>
