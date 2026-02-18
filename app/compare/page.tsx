@@ -93,6 +93,7 @@ export default function ComparePage() {
   const [leftMaterialSlug, setLeftMaterialSlug] = useState(defaultLeftMaterial);
   const [rightMaterialSlug, setRightMaterialSlug] = useState(defaultRightMaterial);
   const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
+  const [matchedYearOnly, setMatchedYearOnly] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const leftCountry = useMemo(
@@ -194,12 +195,13 @@ export default function ComparePage() {
     const leftLatestByMaterial = getLatestRecordByMaterial(leftScopedRecords);
     const rightLatestByMaterial = getLatestRecordByMaterial(rightScopedRecords);
 
-    const sharedMaterialRows = Array.from(leftLatestByMaterial.entries())
+    const allSharedMaterialRows = Array.from(leftLatestByMaterial.entries())
       .filter(([materialSlug]) => rightLatestByMaterial.has(materialSlug))
       .map(([materialSlug, leftRecord]) => {
         const rightRecord = rightLatestByMaterial.get(materialSlug)!;
         const directlyComparable =
           leftRecord.metric === rightRecord.metric && leftRecord.unit === rightRecord.unit;
+        const yearMatched = leftRecord.year === rightRecord.year;
 
         return {
           materialSlug,
@@ -207,10 +209,15 @@ export default function ComparePage() {
           leftRecord,
           rightRecord,
           directlyComparable,
+          yearMatched,
           delta: directlyComparable ? leftRecord.value - rightRecord.value : null,
         };
       })
       .sort((a, b) => a.materialName.localeCompare(b.materialName));
+
+    const sharedMaterialRows = matchedYearOnly
+      ? allSharedMaterialRows.filter((row) => row.yearMatched)
+      : allSharedMaterialRows;
 
     return {
       leftHighConfidence,
@@ -224,8 +231,10 @@ export default function ComparePage() {
       leftScopedRecordCount: leftScopedRecords.length,
       rightScopedRecordCount: rightScopedRecords.length,
       sharedMaterialRows,
+      allSharedMaterialCount: allSharedMaterialRows.length,
+      matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
     };
-  }, [highConfidenceOnly, leftCountry, rightCountry]);
+  }, [highConfidenceOnly, leftCountry, matchedYearOnly, rightCountry]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -247,6 +256,7 @@ export default function ComparePage() {
       pickSlugFromQuery(params.get("rightMaterial"), materialSlugs, defaultRightMaterial)
     );
     setHighConfidenceOnly(pickBooleanFromQuery(params.get("highConfidenceOnly"), false));
+    setMatchedYearOnly(pickBooleanFromQuery(params.get("matchedYearOnly"), false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -267,9 +277,22 @@ export default function ComparePage() {
       params.delete("highConfidenceOnly");
     }
 
+    if (matchedYearOnly) {
+      params.set("matchedYearOnly", "1");
+    } else {
+      params.delete("matchedYearOnly");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", nextUrl);
-  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug, highConfidenceOnly]);
+  }, [
+    leftCountrySlug,
+    rightCountrySlug,
+    leftMaterialSlug,
+    rightMaterialSlug,
+    highConfidenceOnly,
+    matchedYearOnly,
+  ]);
 
   const compareParams = useMemo(() => {
     const params = new URLSearchParams({
@@ -283,8 +306,19 @@ export default function ComparePage() {
       params.set("highConfidenceOnly", "1");
     }
 
+    if (matchedYearOnly) {
+      params.set("matchedYearOnly", "1");
+    }
+
     return params;
-  }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug, highConfidenceOnly]);
+  }, [
+    leftCountrySlug,
+    rightCountrySlug,
+    leftMaterialSlug,
+    rightMaterialSlug,
+    highConfidenceOnly,
+    matchedYearOnly,
+  ]);
 
   const comparePath = `/compare?${compareParams.toString()}`;
 
@@ -484,6 +518,15 @@ export default function ComparePage() {
               >
                 {highConfidenceOnly ? "Showing High-confidence only" : "Show High-confidence only"}
               </button>
+              <button
+                type="button"
+                className={`secondaryButton ${matchedYearOnly ? "isActive" : ""}`}
+                onClick={() => setMatchedYearOnly((prev) => !prev)}
+              >
+                {matchedYearOnly
+                  ? "Showing matched-year records"
+                  : "Show matched-year records only"}
+              </button>
             </div>
 
             <StatGrid>
@@ -515,7 +558,11 @@ export default function ComparePage() {
               <StatCard
                 label="Shared materials"
                 value={String(countryMaterialComparison.sharedMaterialRows.length)}
-                hint="Materials with records in both selected countries"
+                hint={
+                  matchedYearOnly
+                    ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                    : "Materials with records in both selected countries"
+                }
               />
             </StatGrid>
 
@@ -579,7 +626,9 @@ export default function ComparePage() {
               </div>
             ) : (
               <p className="sectionIntro">
-                No shared material records yet between {leftCountry.name} and {rightCountry.name}.
+                {matchedYearOnly
+                  ? `No matched-year shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
+                  : `No shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`}
               </p>
             )}
           </>
