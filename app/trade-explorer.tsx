@@ -12,7 +12,7 @@ type CategoryFilter = (typeof categories)[number];
 type ViewMode = "cards" | "table";
 type SortMode = "relevance" | "product" | "importers" | "exporters";
 type CountryRoleFilter = "any" | "importer" | "exporter";
-type MaterialLinkMode = "all" | "linked";
+type MaterialLinkMode = "all" | "linked" | "unlinked";
 
 type CountryTagListProps = {
   countries: string[];
@@ -91,7 +91,10 @@ export default function TradeExplorer() {
           materialName.includes(normalizedFlowProduct)
         );
       });
-      const byMaterialLink = materialLinkMode === "all" || hasMaterialDataset;
+      const byMaterialLink =
+        materialLinkMode === "all" ||
+        (materialLinkMode === "linked" && hasMaterialDataset) ||
+        (materialLinkMode === "unlinked" && !hasMaterialDataset);
 
       return byCategory && byCountry && byQuery && byMaterialLink;
     });
@@ -538,6 +541,7 @@ export default function TradeExplorer() {
             >
               <option value="all">All routes</option>
               <option value="linked">Only routes linked to materials</option>
+              <option value="unlinked">Only routes missing material links</option>
             </select>
           </label>
         </div>
@@ -604,7 +608,10 @@ export default function TradeExplorer() {
                 className="activeFilterChip"
                 onClick={() => setMaterialLinkMode("all")}
               >
-                Material links only ×
+                {materialLinkMode === "linked"
+                  ? "Material links only"
+                  : "Missing material links only"}{" "}
+                ×
               </button>
             ) : null}
             {sortMode !== "relevance" ? (
@@ -660,6 +667,13 @@ export default function TradeExplorer() {
             onClick={() => setCountryRole("exporter")}
           >
             Focus exporter-side pressure points
+          </button>
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => setMaterialLinkMode("unlinked")}
+          >
+            Show routes with missing material links
           </button>
         </div>
       </Card>
