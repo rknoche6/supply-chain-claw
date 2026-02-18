@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../components";
-import { getCountryProfiles } from "../../lib/countries";
+import { getCountryProfiles, type CountryMaterialRecord } from "../../lib/countries";
 import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
 const countries = getCountryProfiles();
@@ -50,6 +50,24 @@ function getMaterialStats(slug: string) {
 
 function formatSignedDelta(value: number) {
   return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+function getLatestRecordByMaterial(records: CountryMaterialRecord[]) {
+  const latestByMaterial = new Map<string, CountryMaterialRecord>();
+
+  for (const record of records) {
+    const existing = latestByMaterial.get(record.materialSlug);
+
+    if (
+      !existing ||
+      record.year > existing.year ||
+      (record.year === existing.year && record.value > existing.value)
+    ) {
+      latestByMaterial.set(record.materialSlug, record);
+    }
+  }
+
+  return latestByMaterial;
 }
 
 export default function ComparePage() {
@@ -134,6 +152,58 @@ export default function ComparePage() {
       exclusiveProductsLeft: leftProducts.size - sharedProducts.length,
       exclusiveProductsRight:
         new Set(rightCountry.products.map((item) => item.product)).size - sharedProducts.length,
+    };
+  }, [leftCountry, rightCountry]);
+
+  const countryMaterialComparison = useMemo(() => {
+    if (!leftCountry || !rightCountry) {
+      return null;
+    }
+
+    const leftHighConfidence = leftCountry.materialRecords.filter(
+      (record) => record.confidence === "High"
+    ).length;
+    const rightHighConfidence = rightCountry.materialRecords.filter(
+      (record) => record.confidence === "High"
+    ).length;
+
+    const leftLatestYear = Math.max(...leftCountry.materialRecords.map((record) => record.year));
+    const rightLatestYear = Math.max(...rightCountry.materialRecords.map((record) => record.year));
+
+    const leftLatestByMaterial = getLatestRecordByMaterial(leftCountry.materialRecords);
+    const rightLatestByMaterial = getLatestRecordByMaterial(rightCountry.materialRecords);
+
+    const sharedMaterialRows = Array.from(leftLatestByMaterial.entries())
+      .filter(([materialSlug]) => rightLatestByMaterial.has(materialSlug))
+      .map(([materialSlug, leftRecord]) => {
+        const rightRecord = rightLatestByMaterial.get(materialSlug)!;
+        const directlyComparable =
+          leftRecord.metric === rightRecord.metric && leftRecord.unit === rightRecord.unit;
+
+        return {
+          materialSlug,
+          materialName: leftRecord.materialName,
+          leftRecord,
+          rightRecord,
+          directlyComparable,
+          delta: directlyComparable ? leftRecord.value - rightRecord.value : null,
+        };
+      })
+      .sort((a, b) => a.materialName.localeCompare(b.materialName));
+
+    return {
+      leftHighConfidence,
+      rightHighConfidence,
+      leftLatestYear,
+      rightLatestYear,
+      leftSourceCount: new Set(leftCountry.materialRecords.map((record) => record.sourceUrl)).size,
+      rightSourceCount: new Set(rightCountry.materialRecords.map((record) => record.sourceUrl))
+        .size,
+      leftMaterialCount: new Set(leftCountry.materialRecords.map((record) => record.materialSlug))
+        .size,
+      rightMaterialCount: new Set(rightCountry.materialRecords.map((record) => record.materialSlug))
+        .size,
+      sharedMaterialRows,
     };
   }, [leftCountry, rightCountry]);
 
@@ -322,6 +392,93 @@ export default function ComparePage() {
               </p>
             </article>
           </div>
+        ) : null}
+
+        {countryMaterialComparison && leftCountry && rightCountry ? (
+          <>
+            <SectionHeader
+              eyebrow="Material data in selected countries"
+              title="Country-level source-cited material comparison"
+              description="Latest exact values by material, with unit/year/source checks for direct comparability."
+            />
+
+            <StatGrid>
+              <StatCard
+                label={`${leftCountry.name} materials`}
+                value={String(countryMaterialComparison.leftMaterialCount)}
+                hint={`Latest year ${countryMaterialComparison.leftLatestYear}`}
+              />
+              <StatCard
+                label={`${rightCountry.name} materials`}
+                value={String(countryMaterialComparison.rightMaterialCount)}
+                hint={`Latest year ${countryMaterialComparison.rightLatestYear}`}
+              />
+              <StatCard
+                label="High-confidence records"
+                value={`${countryMaterialComparison.leftHighConfidence}/${leftCountry.materialRecords.length} vs ${countryMaterialComparison.rightHighConfidence}/${rightCountry.materialRecords.length}`}
+                hint={`${leftCountry.name} vs ${rightCountry.name}`}
+              />
+              <StatCard
+                label="Distinct source links"
+                value={`${countryMaterialComparison.leftSourceCount} vs ${countryMaterialComparison.rightSourceCount}`}
+                hint={`${leftCountry.name} vs ${rightCountry.name}`}
+              />
+              <StatCard
+                label="Shared materials"
+                value={String(countryMaterialComparison.sharedMaterialRows.length)}
+                hint="Materials with records in both selected countries"
+              />
+            </StatGrid>
+
+            {countryMaterialComparison.sharedMaterialRows.length > 0 ? (
+              <div className="tableWrap">
+                <table className="flowTable">
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>{leftCountry.name}</th>
+                      <th>{rightCountry.name}</th>
+                      <th>Delta</th>
+                      <th>Left source</th>
+                      <th>Right source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {countryMaterialComparison.sharedMaterialRows.map((row) => (
+                      <tr key={`${leftCountry.slug}-${rightCountry.slug}-${row.materialSlug}`}>
+                        <td>
+                          <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                        </td>
+                        <td>
+                          {row.leftRecord.value.toLocaleString()} {row.leftRecord.unit} (
+                          {row.leftRecord.year})
+                        </td>
+                        <td>
+                          {row.rightRecord.value.toLocaleString()} {row.rightRecord.unit} (
+                          {row.rightRecord.year})
+                        </td>
+                        <td>
+                          {row.directlyComparable && row.delta !== null
+                            ? `${row.delta >= 0 ? "+" : ""}${row.delta.toLocaleString()} ${row.leftRecord.unit}`
+                            : "Not directly comparable"}
+                        </td>
+                        <td>
+                          <a href={row.leftRecord.sourceUrl}>{row.leftRecord.sourceName}</a>
+                        </td>
+                        <td>
+                          <a href={row.rightRecord.sourceUrl}>{row.rightRecord.sourceName}</a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="sectionIntro">
+                No shared material records yet between {leftCountry.name} and {rightCountry.name}.
+              </p>
+            )}
+          </>
         ) : null}
       </Card>
 
