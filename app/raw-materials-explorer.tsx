@@ -254,6 +254,7 @@ export default function RawMaterialsExplorer() {
                   <th>Freshness</th>
                   <th>Confidence</th>
                   <th>Source</th>
+                  <th>Drilldowns</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,6 +263,19 @@ export default function RawMaterialsExplorer() {
                   const confidence = getDataPointConfidence(point);
                   const countrySlug = toCountrySlug(point.country);
                   const hasCountryPage = countrySlugSet.has(countrySlug);
+                  const topCountryPoint = item.dataPoints[0] ?? null;
+                  const topCountrySlug = topCountryPoint
+                    ? toCountrySlug(topCountryPoint.country)
+                    : null;
+                  const hasTopCountryPage =
+                    topCountrySlug !== null && countrySlugSet.has(topCountrySlug);
+                  const compareHref =
+                    hasCountryPage &&
+                    hasTopCountryPage &&
+                    topCountrySlug !== null &&
+                    countrySlug !== topCountrySlug
+                      ? `/compare?leftCountry=${countrySlug}&rightCountry=${topCountrySlug}`
+                      : null;
 
                   return (
                     <tr key={`${item.name}-${point.country}-${point.metric}-${point.year}`}>
@@ -283,6 +297,9 @@ export default function RawMaterialsExplorer() {
                         <a href={point.sourceUrl} target="_blank" rel="noreferrer">
                           {point.sourceName}
                         </a>
+                      </td>
+                      <td>
+                        {compareHref ? <Link href={compareHref}>Compare vs top country</Link> : "—"}
                       </td>
                     </tr>
                   );
