@@ -6,7 +6,14 @@ import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../com
 import { getCountryProfiles, type CountryMaterialRecord } from "../../lib/countries";
 import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
-type SharedMaterialSort = "material" | "delta-desc" | "delta-asc" | "left-value" | "right-value";
+type SharedMaterialSort =
+  | "material"
+  | "delta-desc"
+  | "delta-asc"
+  | "delta-percent-desc"
+  | "delta-percent-asc"
+  | "left-value"
+  | "right-value";
 
 const countries = getCountryProfiles();
 
@@ -34,6 +41,8 @@ function pickSharedMaterialSort(candidate: string | null): SharedMaterialSort {
   switch (candidate) {
     case "delta-desc":
     case "delta-asc":
+    case "delta-percent-desc":
+    case "delta-percent-asc":
     case "left-value":
     case "right-value":
       return candidate;
@@ -220,6 +229,12 @@ export default function ComparePage() {
           leftRecord.metric === rightRecord.metric && leftRecord.unit === rightRecord.unit;
         const yearMatched = leftRecord.year === rightRecord.year;
 
+        const delta = directlyComparable ? leftRecord.value - rightRecord.value : null;
+        const deltaPercent =
+          directlyComparable && rightRecord.value !== 0 && delta !== null
+            ? delta / rightRecord.value
+            : null;
+
         return {
           materialSlug,
           materialName: leftRecord.materialName,
@@ -227,7 +242,8 @@ export default function ComparePage() {
           rightRecord,
           directlyComparable,
           yearMatched,
-          delta: directlyComparable ? leftRecord.value - rightRecord.value : null,
+          delta,
+          deltaPercent,
         };
       })
       .sort((a, b) => a.materialName.localeCompare(b.materialName));
@@ -256,6 +272,18 @@ export default function ComparePage() {
       if (sharedMaterialSort === "delta-asc") {
         const left = a.delta ?? Number.POSITIVE_INFINITY;
         const right = b.delta ?? Number.POSITIVE_INFINITY;
+        return left - right || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (sharedMaterialSort === "delta-percent-desc") {
+        const left = a.deltaPercent ?? Number.NEGATIVE_INFINITY;
+        const right = b.deltaPercent ?? Number.NEGATIVE_INFINITY;
+        return right - left || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (sharedMaterialSort === "delta-percent-asc") {
+        const left = a.deltaPercent ?? Number.POSITIVE_INFINITY;
+        const right = b.deltaPercent ?? Number.POSITIVE_INFINITY;
         return left - right || a.materialName.localeCompare(b.materialName);
       }
 
@@ -642,6 +670,8 @@ export default function ComparePage() {
                   <option value="material">Material A-Z</option>
                   <option value="delta-desc">Largest positive delta</option>
                   <option value="delta-asc">Largest negative delta</option>
+                  <option value="delta-percent-desc">Largest positive delta (%)</option>
+                  <option value="delta-percent-asc">Largest negative delta (%)</option>
                   <option value="left-value">Highest left-country value</option>
                   <option value="right-value">Highest right-country value</option>
                 </select>
@@ -707,6 +737,7 @@ export default function ComparePage() {
                       <th>{leftCountry.name}</th>
                       <th>{rightCountry.name}</th>
                       <th>Delta</th>
+                      <th>Delta %</th>
                       <th>Year alignment</th>
                       <th>Data quality</th>
                       <th>Left source</th>
@@ -730,6 +761,11 @@ export default function ComparePage() {
                         <td>
                           {row.directlyComparable && row.delta !== null
                             ? `${row.delta >= 0 ? "+" : ""}${row.delta.toLocaleString()} ${row.leftRecord.unit}`
+                            : "Not directly comparable"}
+                        </td>
+                        <td>
+                          {row.directlyComparable && row.deltaPercent !== null
+                            ? `${row.deltaPercent >= 0 ? "+" : ""}${(row.deltaPercent * 100).toFixed(1)}%`
                             : "Not directly comparable"}
                         </td>
                         <td>
