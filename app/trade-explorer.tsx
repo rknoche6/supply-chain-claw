@@ -278,6 +278,37 @@ export default function TradeExplorer() {
       ? null
       : (mappedRoutes.find((route) => route.id === selectedRouteId) ?? null);
 
+  const focusLaneOnMap = ({
+    exporter,
+    importer,
+    linkedOnly = false,
+  }: {
+    exporter: string;
+    importer: string;
+    linkedOnly?: boolean;
+  }) => {
+    setCountry(importer);
+    setCountryRole("importer");
+    setMaterialLinkMode(linkedOnly ? "linked" : "all");
+    setSortMode("relevance");
+    setViewMode("cards");
+    setPage(1);
+
+    const matchingRoute = mappedRoutes.find(
+      (route) => route.topExporter === exporter && route.topImporter === importer
+    );
+
+    if (matchingRoute) {
+      setSelectedRouteId(matchingRoute.id);
+      setQuery(matchingRoute.product);
+    } else {
+      setQuery("");
+    }
+
+    const mapSection = document.getElementById("filtered-route-map");
+    mapSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const primaryExchangeLanes = useMemo(() => {
     const laneCounts = new Map<
       string,
@@ -751,6 +782,7 @@ export default function TradeExplorer() {
         title="Filtered route map"
         subtitle="Tap a route to spotlight its exact path. Great for comparing corridors on mobile and desktop."
       >
+        <span id="filtered-route-map" aria-hidden="true" />
         {mappedRoutes.length > 0 ? (
           <>
             <div className="routePicker" role="list" aria-label="Filtered route options">
@@ -897,6 +929,16 @@ export default function TradeExplorer() {
                         : "No direct material match"}
                     </td>
                     <td>
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() =>
+                          focusLaneOnMap({ exporter: lane.exporter, importer: lane.importer })
+                        }
+                      >
+                        Focus on map
+                      </button>
+                      <br />
                       {lane.compareHref ? (
                         <Link href={lane.compareHref}>
                           Compare {lane.exporter} vs {lane.importer}
@@ -1008,15 +1050,13 @@ export default function TradeExplorer() {
                       <button
                         type="button"
                         className="secondaryButton"
-                        onClick={() => {
-                          setCountry(lane.importer);
-                          setCountryRole("importer");
-                          setMaterialLinkMode("linked");
-                          setQuery(lane.products[0] ?? "");
-                          setSortMode("relevance");
-                          setViewMode("cards");
-                          setPage(1);
-                        }}
+                        onClick={() =>
+                          focusLaneOnMap({
+                            exporter: lane.exporter,
+                            importer: lane.importer,
+                            linkedOnly: true,
+                          })
+                        }
                       >
                         Focus importer lane
                       </button>
