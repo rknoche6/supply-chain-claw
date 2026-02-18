@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card, SectionHeader, StatCard, StatGrid } from "./components";
-import { toCountrySlug } from "../lib/countries";
+import { getCountryProfiles, toCountrySlug } from "../lib/countries";
 import { categories, tradeFlows } from "../lib/trade-data";
 import RouteMap from "./route-map";
 
@@ -55,6 +55,11 @@ export default function TradeExplorer() {
     }
     return ["All countries", ...Array.from(all).sort((a, b) => a.localeCompare(b))];
   }, []);
+
+  const countrySlugSet = useMemo(
+    () => new Set(getCountryProfiles().map((profile) => profile.slug)),
+    []
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -142,12 +147,30 @@ export default function TradeExplorer() {
   }, [country, filtered]);
 
   const mappedRoutes = useMemo(() => {
-    return filtered.map((flow, index) => ({
-      id: `${flow.product}-${index}`,
-      product: flow.product,
-      stops: flow.keyRoute.split("→").map((item) => item.trim()),
-    }));
-  }, [filtered]);
+    return filtered.map((flow, index) => {
+      const topImporter = flow.topImporters[0] ?? null;
+      const topExporter = flow.topExporters[0] ?? null;
+      const importerSlug = topImporter ? toCountrySlug(topImporter) : null;
+      const exporterSlug = topExporter ? toCountrySlug(topExporter) : null;
+      const hasCompareCountries =
+        importerSlug !== null &&
+        exporterSlug !== null &&
+        countrySlugSet.has(importerSlug) &&
+        countrySlugSet.has(exporterSlug) &&
+        importerSlug !== exporterSlug;
+
+      return {
+        id: `${flow.product}-${index}`,
+        product: flow.product,
+        stops: flow.keyRoute.split("→").map((item) => item.trim()),
+        topImporter,
+        topExporter,
+        compareHref: hasCompareCountries
+          ? `/compare?leftCountry=${exporterSlug}&rightCountry=${importerSlug}`
+          : null,
+      };
+    });
+  }, [countrySlugSet, filtered]);
 
   useEffect(() => {
     if (mappedRoutes.length === 0) {
@@ -405,10 +428,21 @@ export default function TradeExplorer() {
             </div>
 
             {selectedRoute ? (
-              <p className="sectionIntro">
-                Spotlight: <strong>{selectedRoute.product}</strong> ·{" "}
-                {selectedRoute.stops.join(" → ")}
-              </p>
+              <>
+                <p className="sectionIntro">
+                  Spotlight: <strong>{selectedRoute.product}</strong> ·{" "}
+                  {selectedRoute.stops.join(" → ")}
+                </p>
+                {selectedRoute.compareHref &&
+                selectedRoute.topExporter &&
+                selectedRoute.topImporter ? (
+                  <p className="sectionIntro">
+                    Compare primary route countries:{" "}
+                    <Link href={selectedRoute.compareHref}>{selectedRoute.topExporter}</Link> vs{" "}
+                    <Link href={selectedRoute.compareHref}>{selectedRoute.topImporter}</Link>
+                  </p>
+                ) : null}
+              </>
             ) : null}
 
             <RouteMap routes={mappedRoutes} selectedRouteId={selectedRouteId} />
