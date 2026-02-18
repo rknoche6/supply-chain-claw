@@ -509,6 +509,8 @@ export default function ComparePage() {
                       <th>{leftCountry.name}</th>
                       <th>{rightCountry.name}</th>
                       <th>Delta</th>
+                      <th>Year alignment</th>
+                      <th>Data quality</th>
                       <th>Left source</th>
                       <th>Right source</th>
                     </tr>
@@ -533,10 +535,23 @@ export default function ComparePage() {
                             : "Not directly comparable"}
                         </td>
                         <td>
-                          <a href={row.leftRecord.sourceUrl}>{row.leftRecord.sourceName}</a>
+                          {row.leftRecord.year === row.rightRecord.year
+                            ? `${row.leftRecord.year} (matched)`
+                            : `${row.leftRecord.year} vs ${row.rightRecord.year}`}
                         </td>
                         <td>
-                          <a href={row.rightRecord.sourceUrl}>{row.rightRecord.sourceName}</a>
+                          {row.leftRecord.confidence}/{row.leftRecord.freshness} vs{" "}
+                          {row.rightRecord.confidence}/{row.rightRecord.freshness}
+                        </td>
+                        <td>
+                          <a href={row.leftRecord.sourceUrl} target="_blank" rel="noreferrer">
+                            {row.leftRecord.sourceName}
+                          </a>
+                        </td>
+                        <td>
+                          <a href={row.rightRecord.sourceUrl} target="_blank" rel="noreferrer">
+                            {row.rightRecord.sourceName}
+                          </a>
                         </td>
                       </tr>
                     ))}
