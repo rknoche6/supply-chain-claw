@@ -87,6 +87,59 @@ export default function ExplorerCommandSearch() {
 
     const viewMatches = [] as SearchResult[];
 
+    if (normalizedQuery.includes("countries") || normalizedQuery.includes("country")) {
+      const countryParams = new URLSearchParams();
+      const trimmed = query.trim();
+      if (trimmed.length > 0) {
+        countryParams.set("q", trimmed);
+      }
+
+      if (normalizedQuery.includes("importer")) {
+        countryParams.set("role", "importer");
+      }
+
+      if (normalizedQuery.includes("exporter")) {
+        countryParams.set("role", "exporter");
+      }
+
+      viewMatches.push({
+        key: `view-countries-${countryParams.toString() || "all"}`,
+        name: "Open countries directory",
+        href: countryParams.toString() ? `/countries?${countryParams.toString()}` : "/countries",
+        type: "View",
+        meta:
+          normalizedQuery.includes("importer") || normalizedQuery.includes("exporter")
+            ? "Prefilled countries directory filters"
+            : "Browse country pages with filters",
+      });
+    }
+
+    if (normalizedQuery.includes("materials") || normalizedQuery.includes("material")) {
+      const materialParams = new URLSearchParams();
+      const trimmed = query.trim();
+      if (trimmed.length > 0) {
+        materialParams.set("q", trimmed);
+      }
+
+      const matchedCategory = rawMaterials.find((material) =>
+        normalizedQuery.includes(material.category.toLowerCase())
+      )?.category;
+
+      if (matchedCategory) {
+        materialParams.set("category", matchedCategory);
+      }
+
+      viewMatches.push({
+        key: `view-materials-${materialParams.toString() || "all"}`,
+        name: "Open materials directory",
+        href: materialParams.toString() ? `/materials?${materialParams.toString()}` : "/materials",
+        type: "View",
+        meta: matchedCategory
+          ? `Prefilled materials filter (${matchedCategory})`
+          : "Browse material pages with filters",
+      });
+    }
+
     if (
       normalizedQuery.includes("compare") ||
       normalizedQuery.includes("vs") ||
