@@ -43,6 +43,8 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
   const availableYears = Array.from(new Set(material.dataPoints.map((point) => point.year))).sort(
     (a, b) => b - a
   );
+  const primaryMetric = material.dataPoints[0]?.metric ?? null;
+  const primaryUnit = material.dataPoints[0]?.unit ?? null;
   const highConfidenceCount = material.dataPoints.filter(
     (point) => getDataPointConfidence(point) === "High"
   ).length;
@@ -117,6 +119,34 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
     })
     .sort((a, b) => b.year - a.year);
 
+  const compareMaterialShortcuts = rawMaterials
+    .filter(
+      (candidate) => candidate.slug !== material.slug && candidate.category === material.category
+    )
+    .map((candidate) => {
+      const candidatePrimaryMetric = candidate.dataPoints[0]?.metric ?? null;
+      const candidatePrimaryUnit = candidate.dataPoints[0]?.unit ?? null;
+      const directlyComparable =
+        primaryMetric !== null &&
+        primaryUnit !== null &&
+        candidatePrimaryMetric === primaryMetric &&
+        candidatePrimaryUnit === primaryUnit;
+
+      return {
+        slug: candidate.slug,
+        name: candidate.name,
+        recordCount: candidate.dataPoints.length,
+        directlyComparable,
+      };
+    })
+    .sort(
+      (a, b) =>
+        Number(b.directlyComparable) - Number(a.directlyComparable) ||
+        b.recordCount - a.recordCount ||
+        a.name.localeCompare(b.name)
+    )
+    .slice(0, 6);
+
   return (
     <Container>
       <header className="pageHeader">
@@ -165,6 +195,44 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
             <p className="statHint">Higher values indicate tighter producer concentration.</p>
           </article>
         </div>
+      </Card>
+
+      <Card
+        title="Compare shortcuts"
+        subtitle="Launch prefilled material comparisons from this detail page."
+      >
+        <p className="sectionIntro">
+          Baseline: <strong>{material.name}</strong> as the left material in compare view.
+        </p>
+        {compareMaterialShortcuts.length > 0 ? (
+          <div className="linkChipList">
+            {compareMaterialShortcuts.map((candidate) => {
+              const compareParams = new URLSearchParams({
+                leftMaterial: material.slug,
+                rightMaterial: candidate.slug,
+              });
+
+              return (
+                <Link
+                  key={`${material.slug}-compare-${candidate.slug}`}
+                  href={`/compare?${compareParams.toString()}`}
+                  className="linkChip"
+                >
+                  <span>
+                    {material.name} vs {candidate.name}
+                  </span>
+                  <span>
+                    {candidate.directlyComparable ? "Directly comparable" : "Open compare"}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="sectionIntro">
+            No mapped material peers available yet for quick compare links.
+          </p>
+        )}
       </Card>
 
       <Card
