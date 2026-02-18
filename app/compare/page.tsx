@@ -84,6 +84,7 @@ export default function ComparePage() {
 
   const [leftMaterialSlug, setLeftMaterialSlug] = useState(defaultLeftMaterial);
   const [rightMaterialSlug, setRightMaterialSlug] = useState(defaultRightMaterial);
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const leftCountry = useMemo(
     () => countries.find((item) => item.slug === leftCountrySlug) ?? null,
@@ -244,12 +245,55 @@ export default function ComparePage() {
     window.history.replaceState(null, "", nextUrl);
   }, [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug]);
 
+  const compareParams = useMemo(
+    () =>
+      new URLSearchParams({
+        leftCountry: leftCountrySlug,
+        rightCountry: rightCountrySlug,
+        leftMaterial: leftMaterialSlug,
+        rightMaterial: rightMaterialSlug,
+      }),
+    [leftCountrySlug, rightCountrySlug, leftMaterialSlug, rightMaterialSlug]
+  );
+
+  const comparePath = `/compare?${compareParams.toString()}`;
+
+  const handleCopyShareLink = async () => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      setShareStatus("failed");
+      return;
+    }
+
+    const url = `${window.location.origin}${comparePath}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus("copied");
+      window.setTimeout(() => setShareStatus("idle"), 2500);
+    } catch {
+      setShareStatus("failed");
+      window.setTimeout(() => setShareStatus("idle"), 2500);
+    }
+  };
+
   return (
     <Container>
       <header className="pageHeader">
         <Pill tone="primary">Compare view</Pill>
         <h1>Country and material comparison</h1>
         <p>Side-by-side explorer view for country roles and source-cited material records.</p>
+        <div className="filterActions">
+          <button type="button" className="secondaryButton" onClick={handleCopyShareLink}>
+            Copy current compare link
+          </button>
+          {shareStatus === "copied" ? <span className="sectionIntro">Link copied.</span> : null}
+          {shareStatus === "failed" ? (
+            <span className="sectionIntro">Could not copy link automatically.</span>
+          ) : null}
+        </div>
+        <p className="sectionIntro">
+          Share URL: <Link href={comparePath}>{comparePath}</Link>
+        </p>
         <p>
           <Link href="/">← Back to explorer</Link>
         </p>
