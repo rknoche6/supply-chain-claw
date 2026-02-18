@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card, SectionHeader, StatCard, StatGrid } from "./components";
 import { getCountryProfiles, toCountrySlug } from "../lib/countries";
+import { rawMaterials } from "../lib/raw-materials";
 import { categories, tradeFlows } from "../lib/trade-data";
 import RouteMap from "./route-map";
 
@@ -205,6 +206,16 @@ export default function TradeExplorer() {
       const matchesCountryFilter =
         country !== "All countries" &&
         (flow.topImporters.includes(country) || flow.topExporters.includes(country));
+      const matchedMaterial =
+        rawMaterials.find((material) => {
+          const materialName = material.name.toLowerCase();
+          const normalizedFlowProduct = flow.product.toLowerCase();
+
+          return (
+            normalizedFlowProduct.includes(materialName) ||
+            materialName.includes(normalizedFlowProduct)
+          );
+        }) ?? null;
 
       return {
         id: `${flow.product}-${index}`,
@@ -213,6 +224,7 @@ export default function TradeExplorer() {
         stops: routeStops,
         topImporter,
         topExporter,
+        matchedMaterial,
         matchesCountryFilter,
         compareHref: hasCompareCountries
           ? `/compare?leftCountry=${exporterSlug}&rightCountry=${importerSlug}`
@@ -541,6 +553,20 @@ export default function TradeExplorer() {
                   Spotlight: <strong>{selectedRoute.product}</strong> ·{" "}
                   {selectedRoute.stops.join(" → ")}
                 </p>
+                {selectedRoute.topExporter && selectedRoute.topImporter ? (
+                  <p className="sectionIntro">
+                    Primary exchange pair: <strong>{selectedRoute.topExporter}</strong> (exporter) →{" "}
+                    <strong>{selectedRoute.topImporter}</strong> (importer)
+                  </p>
+                ) : null}
+                {selectedRoute.matchedMaterial ? (
+                  <p className="sectionIntro">
+                    Related raw-material dataset:{" "}
+                    <Link href={`/materials/${selectedRoute.matchedMaterial.slug}`}>
+                      {selectedRoute.matchedMaterial.name}
+                    </Link>
+                  </p>
+                ) : null}
                 {selectedRoute.compareHref &&
                 selectedRoute.topExporter &&
                 selectedRoute.topImporter ? (

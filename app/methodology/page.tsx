@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, Container, Pill, SectionHeader } from "../components";
-import { getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
+import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
 const confidenceScale = [
   {
@@ -101,10 +101,38 @@ function getValidationSummary() {
     .sort((a, b) => a.materialName.localeCompare(b.materialName));
 }
 
+function getConfidenceSummary() {
+  return rawMaterials
+    .map((material) => {
+      const total = material.dataPoints.length;
+      const high = material.dataPoints.filter(
+        (point) => getDataPointConfidence(point) === "High"
+      ).length;
+      const medium = material.dataPoints.filter(
+        (point) => getDataPointConfidence(point) === "Medium"
+      ).length;
+      const low = material.dataPoints.filter(
+        (point) => getDataPointConfidence(point) === "Low"
+      ).length;
+
+      return {
+        materialName: material.name,
+        materialSlug: material.slug,
+        total,
+        high,
+        medium,
+        low,
+        highShare: total > 0 ? (high / total) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.highShare - a.highShare || a.materialName.localeCompare(b.materialName));
+}
+
 export default function MethodologyPage() {
   const sources = getUniqueSources();
   const freshnessSummary = getFreshnessSummary();
   const validationSummary = getValidationSummary();
+  const confidenceSummary = getConfidenceSummary();
   const latestUpdate = rawMaterials
     .map((item) => item.updatedAt)
     .sort((a, b) => b.localeCompare(a))[0];
@@ -239,6 +267,40 @@ export default function MethodologyPage() {
                   <td>{row.sourceLinkedPct.toFixed(1)}%</td>
                   <td>{row.metricCount}</td>
                   <td>{row.unitCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card
+        title="Confidence distribution by material"
+        subtitle="High/Medium/Low coverage for each material, to keep explorer views anchored on precise records."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Total records</th>
+                <th>High</th>
+                <th>Medium</th>
+                <th>Low</th>
+                <th>High-confidence share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {confidenceSummary.map((row) => (
+                <tr key={`${row.materialSlug}-confidence`}>
+                  <td>
+                    <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                  </td>
+                  <td>{row.total}</td>
+                  <td>{row.high}</td>
+                  <td>{row.medium}</td>
+                  <td>{row.low}</td>
+                  <td>{row.highShare.toFixed(1)}%</td>
                 </tr>
               ))}
             </tbody>
