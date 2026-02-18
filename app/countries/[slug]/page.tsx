@@ -88,6 +88,11 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     })
     .slice(0, 6);
 
+  const fallbackCompareCountrySlug =
+    comparePartnerShortcuts[0]?.slug ??
+    getCountryProfiles().find((profile) => profile.slug !== country.slug)?.slug ??
+    country.slug;
+
   const partnerRoleMatrix = Array.from(
     country.topPartners
       .reduce(
@@ -139,6 +144,56 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
       };
     })
     .sort((a, b) => b.totalFlows - a.totalFlows || a.name.localeCompare(b.name));
+
+  const materialCategoryCoverage = Array.from(
+    country.materialRecords
+      .reduce(
+        (map, record) => {
+          const existing = map.get(record.category) ?? {
+            category: record.category,
+            recordCount: 0,
+            highConfidenceCount: 0,
+            latestYear: record.year,
+            materials: new Set<string>(),
+            sources: new Set<string>(),
+          };
+
+          existing.recordCount += 1;
+          if (record.confidence === "High") {
+            existing.highConfidenceCount += 1;
+          }
+          existing.latestYear = Math.max(existing.latestYear, record.year);
+          existing.materials.add(record.materialSlug);
+          existing.sources.add(record.sourceUrl);
+
+          map.set(record.category, existing);
+          return map;
+        },
+        new Map<
+          string,
+          {
+            category: string;
+            recordCount: number;
+            highConfidenceCount: number;
+            latestYear: number;
+            materials: Set<string>;
+            sources: Set<string>;
+          }
+        >()
+      )
+      .values()
+  )
+    .map((entry) => ({
+      category: entry.category,
+      recordCount: entry.recordCount,
+      highConfidenceCount: entry.highConfidenceCount,
+      latestYear: entry.latestYear,
+      materialCount: entry.materials.size,
+      sourceCount: entry.sources.size,
+      highConfidenceShare:
+        entry.recordCount > 0 ? (entry.highConfidenceCount / entry.recordCount) * 100 : 0,
+    }))
+    .sort((a, b) => b.recordCount - a.recordCount || a.category.localeCompare(b.category));
 
   return (
     <Container>
@@ -443,6 +498,57 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           </div>
         ) : (
           <p className="sectionIntro">No source-cited material records for this country yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Material coverage by category"
+        subtitle="Category-level view of exact records, confidence density, freshness, and source footprint for this country."
+      >
+        {materialCategoryCoverage.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Materials</th>
+                  <th>Records</th>
+                  <th>High-confidence</th>
+                  <th>Latest year</th>
+                  <th>Distinct sources</th>
+                  <th>Compare shortcut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materialCategoryCoverage.map((entry) => {
+                  const compareParams = new URLSearchParams({
+                    leftCountry: country.slug,
+                    rightCountry: fallbackCompareCountrySlug,
+                    highConfidenceOnly: "1",
+                  });
+
+                  return (
+                    <tr key={`${country.slug}-material-category-${entry.category}`}>
+                      <td>{entry.category}</td>
+                      <td>{entry.materialCount}</td>
+                      <td>{entry.recordCount}</td>
+                      <td>
+                        {entry.highConfidenceCount}/{entry.recordCount} (
+                        {entry.highConfidenceShare.toFixed(1)}%)
+                      </td>
+                      <td>{entry.latestYear}</td>
+                      <td>{entry.sourceCount}</td>
+                      <td>
+                        <Link href={`/compare?${compareParams.toString()}`}>Open in compare</Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No material category coverage rows yet.</p>
         )}
       </Card>
 
