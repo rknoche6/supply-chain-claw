@@ -263,6 +263,7 @@ export default function TradeExplorer() {
         flowCount: number;
         categories: Set<string>;
         products: string[];
+        linkedMaterials: Set<string>;
       }
     >();
 
@@ -292,11 +293,26 @@ export default function TradeExplorer() {
         flowCount: 0,
         categories: new Set<string>(),
         products: [],
+        linkedMaterials: new Set<string>(),
       };
+
+      const matchedMaterial =
+        rawMaterials.find((material) => {
+          const materialName = material.name.toLowerCase();
+          const normalizedFlowProduct = flow.product.toLowerCase();
+
+          return (
+            normalizedFlowProduct.includes(materialName) ||
+            materialName.includes(normalizedFlowProduct)
+          );
+        }) ?? null;
 
       existing.flowCount += 1;
       existing.categories.add(flow.category);
       existing.products.push(flow.product);
+      if (matchedMaterial) {
+        existing.linkedMaterials.add(matchedMaterial.slug);
+      }
       laneCounts.set(laneId, existing);
     }
 
@@ -305,6 +321,11 @@ export default function TradeExplorer() {
         ...lane,
         categories: Array.from(lane.categories).sort((a, b) => a.localeCompare(b)),
         products: Array.from(new Set(lane.products)).sort((a, b) => a.localeCompare(b)),
+        linkedMaterialRecords: Array.from(lane.linkedMaterials)
+          .map((slug) => rawMaterials.find((material) => material.slug === slug) ?? null)
+          .filter((material): material is (typeof rawMaterials)[number] => material !== null)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        laneShare: filtered.length > 0 ? (lane.flowCount / filtered.length) * 100 : 0,
       }))
       .sort((a, b) => b.flowCount - a.flowCount || a.exporter.localeCompare(b.exporter))
       .slice(0, 10);
@@ -651,7 +672,7 @@ export default function TradeExplorer() {
 
       <Card
         title="Primary exchange lanes"
-        subtitle="Most repeated exporter → importer country pairs across the active filtered routes, with quick compare drilldowns."
+        subtitle="Most repeated exporter → importer country pairs across the active filtered routes, including flow share and linked raw-material datasets."
       >
         {primaryExchangeLanes.length > 0 ? (
           <div className="tableWrap">
@@ -661,8 +682,10 @@ export default function TradeExplorer() {
                   <th>Exporter</th>
                   <th>Importer</th>
                   <th>Matched flows</th>
+                  <th>Flow share</th>
                   <th>Categories</th>
                   <th>Sample products</th>
+                  <th>Linked materials</th>
                   <th>Drilldowns</th>
                 </tr>
               </thead>
@@ -684,8 +707,21 @@ export default function TradeExplorer() {
                       )}
                     </td>
                     <td>{lane.flowCount}</td>
+                    <td>{lane.laneShare.toFixed(0)}%</td>
                     <td>{lane.categories.join(", ")}</td>
                     <td>{lane.products.slice(0, 3).join(", ")}</td>
+                    <td>
+                      {lane.linkedMaterialRecords.length > 0
+                        ? lane.linkedMaterialRecords.map((material, index) => (
+                            <span
+                              key={`${lane.exporterSlug}-${lane.importerSlug}-${material.slug}`}
+                            >
+                              {index > 0 ? ", " : ""}
+                              <Link href={`/materials/${material.slug}`}>{material.name}</Link>
+                            </span>
+                          ))
+                        : "No direct material match"}
+                    </td>
                     <td>
                       {lane.compareHref ? (
                         <Link href={lane.compareHref}>
