@@ -13,6 +13,7 @@ type ViewMode = "cards" | "table";
 type SortMode = "relevance" | "product" | "importers" | "exporters";
 type CountryRoleFilter = "any" | "importer" | "exporter";
 type MaterialLinkMode = "all" | "linked" | "unlinked";
+type MaterialMatchQuality = "all" | "exact" | "partial" | "none";
 
 type CountryTagListProps = {
   countries: string[];
@@ -38,12 +39,39 @@ function CountryTagList({ countries, activeCountry, onPickCountry }: CountryTagL
   );
 }
 
+function getMaterialMatch(flowProduct: string) {
+  const normalizedFlowProduct = flowProduct.toLowerCase();
+
+  const exactMatch = rawMaterials.find(
+    (material) => material.name.toLowerCase() === normalizedFlowProduct
+  );
+
+  if (exactMatch) {
+    return { quality: "exact" as const, material: exactMatch };
+  }
+
+  const partialMatch = rawMaterials.find((material) => {
+    const materialName = material.name.toLowerCase();
+
+    return (
+      normalizedFlowProduct.includes(materialName) || materialName.includes(normalizedFlowProduct)
+    );
+  });
+
+  if (partialMatch) {
+    return { quality: "partial" as const, material: partialMatch };
+  }
+
+  return { quality: "none" as const, material: null };
+}
+
 export default function TradeExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("All");
   const [country, setCountry] = useState("All countries");
   const [countryRole, setCountryRole] = useState<CountryRoleFilter>("any");
   const [materialLinkMode, setMaterialLinkMode] = useState<MaterialLinkMode>("all");
+  const [materialMatchQuality, setMaterialMatchQuality] = useState<MaterialMatchQuality>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [pageSize, setPageSize] = useState(6);
@@ -82,23 +110,18 @@ export default function TradeExplorer() {
         flow.keyRoute.toLowerCase().includes(q) ||
         flow.topImporters.some((item) => item.toLowerCase().includes(q)) ||
         flow.topExporters.some((item) => item.toLowerCase().includes(q));
-      const hasMaterialDataset = rawMaterials.some((material) => {
-        const materialName = material.name.toLowerCase();
-        const normalizedFlowProduct = flow.product.toLowerCase();
-
-        return (
-          normalizedFlowProduct.includes(materialName) ||
-          materialName.includes(normalizedFlowProduct)
-        );
-      });
+      const materialMatch = getMaterialMatch(flow.product);
+      const hasMaterialDataset = materialMatch.quality !== "none";
       const byMaterialLink =
         materialLinkMode === "all" ||
         (materialLinkMode === "linked" && hasMaterialDataset) ||
         (materialLinkMode === "unlinked" && !hasMaterialDataset);
+      const byMatchQuality =
+        materialMatchQuality === "all" || materialMatch.quality === materialMatchQuality;
 
-      return byCategory && byCountry && byQuery && byMaterialLink;
+      return byCategory && byCountry && byQuery && byMaterialLink && byMatchQuality;
     });
-  }, [category, country, countryRole, materialLinkMode, query]);
+  }, [category, country, countryRole, materialLinkMode, materialMatchQuality, query]);
 
   const sortedFlows = useMemo(() => {
     const items = [...filtered];
@@ -120,7 +143,17 @@ export default function TradeExplorer() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, category, country, countryRole, materialLinkMode, sortMode, viewMode, pageSize]);
+  }, [
+    query,
+    category,
+    country,
+    countryRole,
+    materialLinkMode,
+    materialMatchQuality,
+    sortMode,
+    viewMode,
+    pageSize,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(sortedFlows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -129,17 +162,18 @@ export default function TradeExplorer() {
   const pagedFlows = sortedFlows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const materialLinkedFlowCount = useMemo(() => {
-    return filtered.filter((flow) => {
-      return rawMaterials.some((material) => {
-        const materialName = material.name.toLowerCase();
-        const normalizedFlowProduct = flow.product.toLowerCase();
+    return filtered.filter((flow) => getMaterialMatch(flow.product).quality !== "none").length;
+  }, [filtered]);
 
-        return (
-          normalizedFlowProduct.includes(materialName) ||
-          materialName.includes(normalizedFlowProduct)
-        );
-      });
-    }).length;
+  const materialMatchBreakdown = useMemo(() => {
+    return filtered.reduce(
+      (totals, flow) => {
+        const match = getMaterialMatch(flow.product);
+        totals[match.quality] += 1;
+        return totals;
+      },
+      { exact: 0, partial: 0, none: 0 }
+    );
   }, [filtered]);
 
   const topImporters = useMemo(() => {
@@ -236,16 +270,7 @@ export default function TradeExplorer() {
       const matchesCountryFilter =
         country !== "All countries" &&
         (flow.topImporters.includes(country) || flow.topExporters.includes(country));
-      const matchedMaterial =
-        rawMaterials.find((material) => {
-          const materialName = material.name.toLowerCase();
-          const normalizedFlowProduct = flow.product.toLowerCase();
-
-          return (
-            normalizedFlowProduct.includes(materialName) ||
-            materialName.includes(normalizedFlowProduct)
-          );
-        }) ?? null;
+      const materialMatch = getMaterialMatch(flow.product);
 
       return {
         id: `${flow.product}-${index}`,
@@ -254,7 +279,8 @@ export default function TradeExplorer() {
         stops: routeStops,
         topImporter,
         topExporter,
-        matchedMaterial,
+        matchedMaterial: materialMatch.material,
+        materialMatchQuality: materialMatch.quality,
         matchesCountryFilter,
         compareHref: hasCompareCountries
           ? `/compare?leftCountry=${exporterSlug}&rightCountry=${importerSlug}`
@@ -361,22 +387,13 @@ export default function TradeExplorer() {
         matchedFlowCount: 0,
       };
 
-      const matchedMaterial =
-        rawMaterials.find((material) => {
-          const materialName = material.name.toLowerCase();
-          const normalizedFlowProduct = flow.product.toLowerCase();
-
-          return (
-            normalizedFlowProduct.includes(materialName) ||
-            materialName.includes(normalizedFlowProduct)
-          );
-        }) ?? null;
+      const materialMatch = getMaterialMatch(flow.product);
 
       existing.flowCount += 1;
       existing.categories.add(flow.category);
       existing.products.push(flow.product);
-      if (matchedMaterial) {
-        existing.linkedMaterials.add(matchedMaterial.slug);
+      if (materialMatch.material) {
+        existing.linkedMaterials.add(materialMatch.material.slug);
         existing.matchedFlowCount += 1;
       } else {
         existing.unmatchedProducts.add(flow.product);
@@ -544,6 +561,19 @@ export default function TradeExplorer() {
               <option value="unlinked">Only routes missing material links</option>
             </select>
           </label>
+
+          <label>
+            Material match quality
+            <select
+              value={materialMatchQuality}
+              onChange={(e) => setMaterialMatchQuality(e.target.value as MaterialMatchQuality)}
+            >
+              <option value="all">All match levels</option>
+              <option value="exact">Exact material name match</option>
+              <option value="partial">Partial/fuzzy name match</option>
+              <option value="none">No material match</option>
+            </select>
+          </label>
         </div>
 
         {country === "All countries" && countryRole !== "any" ? (
@@ -562,6 +592,7 @@ export default function TradeExplorer() {
               setCountry("All countries");
               setCountryRole("any");
               setMaterialLinkMode("all");
+              setMaterialMatchQuality("all");
               setSortMode("relevance");
               setPageSize(6);
               setPage(1);
@@ -614,6 +645,15 @@ export default function TradeExplorer() {
                 ×
               </button>
             ) : null}
+            {materialMatchQuality !== "all" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setMaterialMatchQuality("all")}
+              >
+                Match quality: {materialMatchQuality} ×
+              </button>
+            ) : null}
             {sortMode !== "relevance" ? (
               <button
                 type="button"
@@ -628,6 +668,7 @@ export default function TradeExplorer() {
             country === "All countries" &&
             countryRole === "any" &&
             materialLinkMode === "all" &&
+            materialMatchQuality === "all" &&
             sortMode === "relevance" ? (
               <span className="sectionIntro">None</span>
             ) : null}
@@ -691,6 +732,11 @@ export default function TradeExplorer() {
           <StatCard
             label="Categories in view"
             value={String(new Set(filtered.map((f) => f.category)).size)}
+          />
+          <StatCard label="Exact material matches" value={String(materialMatchBreakdown.exact)} />
+          <StatCard
+            label="Partial material matches"
+            value={String(materialMatchBreakdown.partial)}
           />
           <article className="statCard">
             <p className="statLabel">Top importers</p>
@@ -899,7 +945,11 @@ export default function TradeExplorer() {
                       Material evidence:{" "}
                       {selectedRoute.matchedMaterial ? (
                         <>
-                          <strong>Linked</strong> ({selectedRoute.matchedMaterial.name})
+                          <strong>Linked</strong> ({selectedRoute.matchedMaterial.name}) · match
+                          quality:{" "}
+                          <strong>
+                            {selectedRoute.materialMatchQuality === "exact" ? "Exact" : "Partial"}
+                          </strong>
                         </>
                       ) : (
                         <>
