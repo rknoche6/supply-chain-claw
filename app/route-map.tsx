@@ -29,6 +29,14 @@ type RouteSegment = {
   matchesCountryFilter: boolean;
 };
 
+type PortMarkerSummary = {
+  name: string;
+  coordinates: [number, number];
+  startCount: number;
+  endCount: number;
+  transitCount: number;
+};
+
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const categoryColor: Record<MappedRoute["category"], string> = {
@@ -103,13 +111,42 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
       : (segments.find((segment, index) => `${segment.routeId}-${index}` === activeSegmentId) ??
         null);
 
-  const uniquePorts = Array.from(
-    new Set(
-      normalizedRoutes.flatMap((route) => route.stops).filter((stop) => portCoordinates[stop])
-    )
-  );
+  const portMarkers = useMemo(() => {
+    const markerSummary = new Map<string, PortMarkerSummary>();
 
-  const highlightedPorts = selectedRoute ? selectedRoute.stops : uniquePorts;
+    const sourceRoutes = selectedRoute ? [selectedRoute] : normalizedRoutes;
+
+    for (const route of sourceRoutes) {
+      for (let index = 0; index < route.stops.length; index += 1) {
+        const stop = route.stops[index];
+        const coordinates = portCoordinates[stop];
+
+        if (!coordinates) {
+          continue;
+        }
+
+        const existing = markerSummary.get(stop) ?? {
+          name: stop,
+          coordinates,
+          startCount: 0,
+          endCount: 0,
+          transitCount: 0,
+        };
+
+        if (index === 0) {
+          existing.startCount += 1;
+        } else if (index === route.stops.length - 1) {
+          existing.endCount += 1;
+        } else {
+          existing.transitCount += 1;
+        }
+
+        markerSummary.set(stop, existing);
+      }
+    }
+
+    return Array.from(markerSummary.values());
+  }, [normalizedRoutes, selectedRoute]);
 
   const segmentCoverage = useMemo(() => {
     const emphasizedSegments = segments.filter(
@@ -170,16 +207,37 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           );
         })}
 
-        {highlightedPorts.map((port) => (
-          <Marker key={port} coordinates={portCoordinates[port]}>
-            <circle
-              r={selectedRoute ? 3.2 : 2.8}
-              fill="#ffe28a"
-              stroke="#f4b42c"
-              strokeWidth={0.8}
-            />
-          </Marker>
-        ))}
+        {portMarkers.map((port) => {
+          const isStartOnly = port.startCount > 0 && port.endCount === 0;
+          const isEndOnly = port.endCount > 0 && port.startCount === 0;
+          const isDualRole = port.startCount > 0 && port.endCount > 0;
+
+          const markerFill = isDualRole
+            ? "#d7b7ff"
+            : isStartOnly
+              ? "#87d4ff"
+              : isEndOnly
+                ? "#ffb0c0"
+                : "#ffe28a";
+          const markerStroke = isDualRole
+            ? "#8f5fe8"
+            : isStartOnly
+              ? "#2d9fda"
+              : isEndOnly
+                ? "#d04f72"
+                : "#f4b42c";
+
+          return (
+            <Marker key={port.name} coordinates={port.coordinates}>
+              <circle
+                r={selectedRoute ? 3.2 : 2.8}
+                fill={markerFill}
+                stroke={markerStroke}
+                strokeWidth={0.8}
+              />
+            </Marker>
+          );
+        })}
       </ComposableMap>
 
       <div className="mapLegend mapLegend--blocks" aria-label="Material category color legend">
@@ -191,12 +249,31 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         ))}
       </div>
 
+      <div className="mapLegend mapLegend--blocks" aria-label="Port role legend">
+        <span className="mapLegendItem">
+          <span className="mapLegendDot" style={{ backgroundColor: "#87d4ff" }} />
+          Export handoff (start)
+        </span>
+        <span className="mapLegendItem">
+          <span className="mapLegendDot" style={{ backgroundColor: "#ffb0c0" }} />
+          Import handoff (end)
+        </span>
+        <span className="mapLegendItem">
+          <span className="mapLegendDot" style={{ backgroundColor: "#ffe28a" }} />
+          Transit checkpoint
+        </span>
+        <span className="mapLegendItem">
+          <span className="mapLegendDot" style={{ backgroundColor: "#d7b7ff" }} />
+          Dual-role hub
+        </span>
+      </div>
+
       <div className="mapLegend">
         <span>
           Routes: <strong>{normalizedRoutes.length}</strong>
         </span>
         <span>
-          Ports: <strong>{highlightedPorts.length}</strong>
+          Ports: <strong>{portMarkers.length}</strong>
         </span>
         <span>
           Country highlight: <strong>{selectedCountry ?? "Off"}</strong>
@@ -216,7 +293,10 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
-      <p className="sectionIntro">Tap or hover a route segment for material + corridor details.</p>
+      <p className="sectionIntro">
+        Tap or hover a route segment for material + corridor details. Port markers show export
+        start, import end, and transit checkpoints.
+      </p>
       {activeSegment ? (
         <div className="mapRouteDetail" role="status" aria-live="polite">
           <p>
