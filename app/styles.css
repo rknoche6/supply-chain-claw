@@ -50,6 +50,59 @@ body {
   color: var(--color-text-primary);
 }
 
+.siteHeader {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  background: rgba(11, 16, 32, 0.88);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.siteHeaderInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.8rem 1rem;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.brandBlock {
+  display: grid;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  gap: 0.05rem;
+}
+
+.brandBlock strong {
+  font-size: 1rem;
+}
+
+.brandBlock span {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.siteNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.siteNav a {
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  padding: 0.35rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.siteNav a:hover {
+  border-color: var(--color-border-strong);
+  background: rgba(120, 200, 255, 0.1);
+}
+
 .container {
   max-width: 980px;
   margin: 0 auto;
@@ -630,6 +683,16 @@ select {
 }
 
 @media (min-width: 720px) {
+  .siteHeaderInner {
+    padding: 0.8rem var(--space-5);
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .siteNav {
+    justify-content: flex-end;
+  }
+
   .container {
     padding: var(--space-6) var(--space-5);
   }

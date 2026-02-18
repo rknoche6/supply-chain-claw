@@ -3,7 +3,7 @@ import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import ExplorerCommandSearch from "./explorer-command-search";
 import TradeExplorer from "./trade-explorer";
 import { getCountryProfiles } from "../lib/countries";
-import { getDataPointConfidence, rawMaterials } from "../lib/raw-materials";
+import { getDataPointConfidence, rawMaterials, type MaterialCategory } from "../lib/raw-materials";
 import { tradeFlows } from "../lib/trade-data";
 
 const countryProfiles = getCountryProfiles();
@@ -34,29 +34,6 @@ const latestReferenceYear = allDataPoints.reduce(
   (maxYear, point) => Math.max(maxYear, point.year),
   0
 );
-
-const recentHighConfidenceRows = rawMaterials
-  .flatMap((material) =>
-    material.dataPoints
-      .filter(
-        (point) => getDataPointConfidence(point) === "High" && point.year >= latestReferenceYear - 1
-      )
-      .map((point) => ({
-        materialName: material.name,
-        materialSlug: material.slug,
-        country: point.country,
-        countrySlug: countrySlugByName.get(point.country) ?? null,
-        value: point.value,
-        unit: point.unit,
-        year: point.year,
-        sourceName: point.sourceName,
-        sourceUrl: point.sourceUrl,
-      }))
-  )
-  .sort(
-    (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
-  )
-  .slice(0, 10);
 
 const topImporterRows = Array.from(
   tradeFlows.reduce((map, flow) => {
@@ -92,7 +69,65 @@ const topExporterRows = Array.from(
   .sort((a, b) => b.flowCount - a.flowCount || a.name.localeCompare(b.name))
   .slice(0, 6);
 
-export default function HomePage() {
+type HomePageProps = {
+  searchParams?: {
+    recordCategory?: string;
+    recordYear?: string;
+  };
+};
+
+export default function HomePage({ searchParams }: HomePageProps) {
+  const categoryOptions = Array.from(
+    new Set(rawMaterials.map((material) => material.category))
+  ).sort((a, b) => a.localeCompare(b));
+  const yearOptions = Array.from(new Set(allDataPoints.map((point) => point.year))).sort(
+    (a, b) => b - a
+  );
+
+  const requestedRecordCategory = searchParams?.recordCategory;
+  const selectedRecordCategory: MaterialCategory | "all" =
+    requestedRecordCategory && (categoryOptions as string[]).includes(requestedRecordCategory)
+      ? (requestedRecordCategory as MaterialCategory)
+      : "all";
+  const selectedRecordYear =
+    searchParams?.recordYear === "all" ||
+    yearOptions.some((year) => String(year) === (searchParams?.recordYear ?? ""))
+      ? (searchParams?.recordYear ?? "all")
+      : "all";
+
+  const recentHighConfidenceRows = rawMaterials
+    .filter(
+      (material) => selectedRecordCategory === "all" || material.category === selectedRecordCategory
+    )
+    .flatMap((material) =>
+      material.dataPoints
+        .filter((point) => {
+          const isHighConfidence = getDataPointConfidence(point) === "High";
+          const yearMatch =
+            selectedRecordYear === "all"
+              ? point.year >= latestReferenceYear - 1
+              : String(point.year) === selectedRecordYear;
+
+          return isHighConfidence && yearMatch;
+        })
+        .map((point) => ({
+          materialName: material.name,
+          materialSlug: material.slug,
+          category: material.category,
+          country: point.country,
+          countrySlug: countrySlugByName.get(point.country) ?? null,
+          value: point.value,
+          unit: point.unit,
+          year: point.year,
+          sourceName: point.sourceName,
+          sourceUrl: point.sourceUrl,
+        }))
+    )
+    .sort(
+      (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
+    )
+    .slice(0, 20);
+
   return (
     <Container>
       <header className="pageHeader">
@@ -196,44 +231,89 @@ export default function HomePage() {
         title="Recent high-confidence records"
         subtitle="Latest numeric rows with explicit unit/year and direct citations for fast drilldown."
       >
-        <div className="tableWrap">
-          <table className="flowTable">
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Country</th>
-                <th>Value</th>
-                <th>Year</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentHighConfidenceRows.map((row) => (
-                <tr key={`${row.materialSlug}-${row.country}-${row.year}-${row.value}`}>
-                  <td>
-                    <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
-                  </td>
-                  <td>
-                    {row.countrySlug ? (
-                      <Link href={`/countries/${row.countrySlug}`}>{row.country}</Link>
-                    ) : (
-                      row.country
-                    )}
-                  </td>
-                  <td>
-                    {row.value.toLocaleString()} {row.unit}
-                  </td>
-                  <td>{row.year}</td>
-                  <td>
-                    <a href={row.sourceUrl} target="_blank" rel="noreferrer">
-                      {row.sourceName}
-                    </a>
-                  </td>
-                </tr>
+        <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
+          <label>
+            Category
+            <select name="recordCategory" defaultValue={selectedRecordCategory}>
+              <option value="all">All categories</option>
+              {categoryOptions.map((category) => (
+                <option key={`home-record-category-${category}`} value={category}>
+                  {category}
+                </option>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </select>
+          </label>
+
+          <label>
+            Year scope
+            <select name="recordYear" defaultValue={selectedRecordYear}>
+              <option value="all">
+                Latest 2 years ({latestReferenceYear - 1}-{latestReferenceYear})
+              </option>
+              {yearOptions.map((year) => (
+                <option key={`home-record-year-${year}`} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button type="submit" className="secondaryButton">
+            Apply filters
+          </button>
+          <Link href="/" className="secondaryButton" prefetch={false}>
+            Reset
+          </Link>
+        </form>
+
+        <p className="sectionIntro">
+          Showing {recentHighConfidenceRows.length} high-confidence records in current filter scope.
+        </p>
+
+        {recentHighConfidenceRows.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Category</th>
+                  <th>Country</th>
+                  <th>Value</th>
+                  <th>Year</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentHighConfidenceRows.map((row) => (
+                  <tr key={`${row.materialSlug}-${row.country}-${row.year}-${row.value}`}>
+                    <td>
+                      <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                    </td>
+                    <td>{row.category}</td>
+                    <td>
+                      {row.countrySlug ? (
+                        <Link href={`/countries/${row.countrySlug}`}>{row.country}</Link>
+                      ) : (
+                        row.country
+                      )}
+                    </td>
+                    <td>
+                      {row.value.toLocaleString()} {row.unit}
+                    </td>
+                    <td>{row.year}</td>
+                    <td>
+                      <a href={row.sourceUrl} target="_blank" rel="noreferrer">
+                        {row.sourceName}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No high-confidence records match the current filters.</p>
+        )}
       </Card>
 
       <Card title="Snapshot" subtitle="Current data footprint.">
