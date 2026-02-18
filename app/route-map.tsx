@@ -111,6 +111,19 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
 
   const highlightedPorts = selectedRoute ? selectedRoute.stops : uniquePorts;
 
+  const segmentCoverage = useMemo(() => {
+    const emphasizedSegments = segments.filter(
+      (segment) =>
+        segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true)
+    ).length;
+
+    return {
+      totalSegments: segments.length,
+      emphasizedSegments,
+      contextualSegments: Math.max(0, segments.length - emphasizedSegments),
+    };
+  }, [segments, selectedCountry]);
+
   return (
     <div
       className="mapFrame mapFrame--enhanced"
@@ -187,6 +200,19 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
         <span>
           Country highlight: <strong>{selectedCountry ?? "Off"}</strong>
+        </span>
+      </div>
+
+      <div className="mapLegend" aria-label="Route emphasis legend">
+        <span>
+          Emphasized segments: <strong>{segmentCoverage.emphasizedSegments}</strong>
+          {segmentCoverage.totalSegments > 0 ? ` / ${segmentCoverage.totalSegments}` : ""}
+        </span>
+        <span>
+          Context segments: <strong>{segmentCoverage.contextualSegments}</strong>
+        </span>
+        <span>
+          Line weight guide: <strong>bold = active focus</strong>, thin = background context
         </span>
       </div>
 
