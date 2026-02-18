@@ -14,6 +14,7 @@ import { getCountryProfiles, toCountrySlug } from "../lib/countries";
 type MaterialCategory = (typeof rawMaterialCategories)[number];
 type ConfidenceFilter = "All confidence" | "High only" | "High + Medium";
 type FreshnessFilter = "All freshness" | "Current only" | "Current + Recent";
+type YearFilter = "All years" | `${number}`;
 
 export default function RawMaterialsExplorer() {
   const [query, setQuery] = useState("");
@@ -21,11 +22,23 @@ export default function RawMaterialsExplorer() {
   const [country, setCountry] = useState("All countries");
   const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>("All confidence");
   const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("All freshness");
+  const [yearFilter, setYearFilter] = useState<YearFilter>("All years");
 
   const countries = useMemo(() => {
     const set = new Set<string>();
     rawMaterials.forEach((m) => m.dataPoints.forEach((d) => set.add(d.country)));
     return ["All countries", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, []);
+
+  const years = useMemo(() => {
+    const set = new Set<number>();
+    rawMaterials.forEach((material) => material.dataPoints.forEach((point) => set.add(point.year)));
+    return [
+      "All years",
+      ...Array.from(set)
+        .sort((a, b) => b - a)
+        .map((year) => String(year)),
+    ];
   }, []);
 
   const countrySlugSet = useMemo(
@@ -41,6 +54,7 @@ export default function RawMaterialsExplorer() {
         const filteredPoints = item.dataPoints
           .filter((point) => {
             const byCountry = country === "All countries" || point.country === country;
+            const byYear = yearFilter === "All years" || String(point.year) === yearFilter;
             const confidence = getDataPointConfidence(point);
             const freshness = getFreshnessLabel(point.year, item.updatedAt);
 
@@ -54,7 +68,7 @@ export default function RawMaterialsExplorer() {
               (freshnessFilter === "Current only" && freshness === "Current") ||
               (freshnessFilter === "Current + Recent" && freshness !== "Stale");
 
-            return byCountry && byConfidence && byFreshness;
+            return byCountry && byYear && byConfidence && byFreshness;
           })
           .sort((a, b) => b.value - a.value);
 
@@ -73,7 +87,7 @@ export default function RawMaterialsExplorer() {
 
         return byCategory && byQuery && item.dataPoints.length > 0;
       });
-  }, [category, confidenceFilter, country, freshnessFilter, query]);
+  }, [category, confidenceFilter, country, freshnessFilter, query, yearFilter]);
 
   const countryLeaderboard = useMemo(() => {
     const stats = new Map<string, { records: number; materials: Set<string> }>();
@@ -105,6 +119,9 @@ export default function RawMaterialsExplorer() {
       sum + item.dataPoints.filter((point) => getDataPointConfidence(point) === "High").length,
     0
   );
+  const visibleYears = Array.from(
+    new Set(filtered.flatMap((item) => item.dataPoints.map((point) => point.year)))
+  ).sort((a, b) => b - a);
 
   return (
     <Card>
@@ -150,6 +167,17 @@ export default function RawMaterialsExplorer() {
         </label>
 
         <label>
+          Year filter
+          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value as YearFilter)}>
+            {years.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
           Confidence filter
           <select
             value={confidenceFilter}
@@ -180,6 +208,10 @@ export default function RawMaterialsExplorer() {
         <StatCard
           label="High-confidence records in view"
           value={String(highConfidenceVisibleRecords)}
+        />
+        <StatCard
+          label="Reference years in view"
+          value={visibleYears.length > 0 ? visibleYears.join(", ") : "—"}
         />
         <article className="statCard">
           <p className="statLabel">Top countries in current filters</p>
