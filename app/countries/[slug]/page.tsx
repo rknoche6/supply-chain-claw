@@ -4,9 +4,15 @@ import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../../
 import { getCountryBySlug, getCountryProfiles } from "../../../lib/countries";
 import { tradeFlows } from "../../../lib/trade-data";
 
+type CountryRoleFilter = "all" | "both" | "import-only" | "export-only";
+
 type CountryPageProps = {
   params: {
     slug: string;
+  };
+  searchParams?: {
+    partner?: string;
+    roleCoverage?: string;
   };
 };
 
@@ -49,7 +55,7 @@ export function generateStaticParams() {
   return getCountryProfiles().map((country) => ({ slug: country.slug }));
 }
 
-export default function CountryDetailPage({ params }: CountryPageProps) {
+export default function CountryDetailPage({ params, searchParams }: CountryPageProps) {
   const country = getCountryBySlug(params.slug);
 
   if (!country) {
@@ -59,6 +65,14 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
   const partnerSlugByName = new Map(
     getCountryProfiles().map((profile) => [profile.name, profile.slug])
   );
+
+  const partnerQuery = (searchParams?.partner ?? "").trim().toLowerCase();
+  const selectedRoleCoverage =
+    searchParams?.roleCoverage === "both" ||
+    searchParams?.roleCoverage === "import-only" ||
+    searchParams?.roleCoverage === "export-only"
+      ? (searchParams.roleCoverage as CountryRoleFilter)
+      : "all";
 
   const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
   const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
@@ -94,7 +108,7 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     getCountryProfiles().find((profile) => profile.slug !== country.slug)?.slug ??
     country.slug;
 
-  const partnerRoleMatrix = Array.from(
+  const allPartnerRoleRows = Array.from(
     country.topPartners
       .reduce(
         (map, partner) => {
@@ -145,6 +159,19 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
       };
     })
     .sort((a, b) => b.totalFlows - a.totalFlows || a.name.localeCompare(b.name));
+
+  const partnerRoleMatrix = allPartnerRoleRows.filter((partner) => {
+    const roleMatches =
+      selectedRoleCoverage === "all" ||
+      (selectedRoleCoverage === "both" && partner.roleCoverage === "Both") ||
+      (selectedRoleCoverage === "import-only" && partner.roleCoverage === "Import only") ||
+      (selectedRoleCoverage === "export-only" && partner.roleCoverage === "Export only");
+
+    const queryMatches =
+      partnerQuery.length === 0 || partner.name.toLowerCase().includes(partnerQuery);
+
+    return roleMatches && queryMatches;
+  });
 
   const materialCategoryCoverage = Array.from(
     country.materialRecords
@@ -439,6 +466,39 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
         title="Partner role matrix"
         subtitle="Unified partner table showing import/export overlap, role coverage, and share of tracked links."
       >
+        <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
+          <label>
+            Partner search
+            <input
+              type="search"
+              name="partner"
+              defaultValue={searchParams?.partner ?? ""}
+              placeholder="Filter partner country"
+            />
+          </label>
+
+          <label>
+            Role coverage
+            <select name="roleCoverage" defaultValue={selectedRoleCoverage}>
+              <option value="all">All partner roles</option>
+              <option value="both">Both import and export</option>
+              <option value="import-only">Import only</option>
+              <option value="export-only">Export only</option>
+            </select>
+          </label>
+
+          <button type="submit" className="secondaryButton">
+            Apply filters
+          </button>
+          <Link href={`/countries/${country.slug}`} className="secondaryButton" prefetch={false}>
+            Reset
+          </Link>
+        </form>
+
+        <p className="sectionIntro">
+          Showing {partnerRoleMatrix.length} of {allPartnerRoleRows.length} partners.
+        </p>
+
         {partnerRoleMatrix.length > 0 ? (
           <div className="tableWrap">
             <table className="flowTable">
