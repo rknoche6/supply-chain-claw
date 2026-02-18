@@ -20,6 +20,13 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     notFound();
   }
 
+  const partnerSlugByName = new Map(
+    getCountryProfiles().map((profile) => [profile.name, profile.slug])
+  );
+
+  const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
+  const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
+
   return (
     <Container>
       <header className="pageHeader">
@@ -54,31 +61,89 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
 
       <Card
         title="Partner concentration"
-        subtitle="Most frequent counterparties by shared product flow and role context."
+        subtitle="Most frequent counterparties split by import and export context, with country drilldowns."
       >
         {country.topPartners.length > 0 ? (
-          <div className="tableWrap">
-            <table className="flowTable">
-              <thead>
-                <tr>
-                  <th>Partner country</th>
-                  <th>Shared flows</th>
-                  <th>Context</th>
-                </tr>
-              </thead>
-              <tbody>
-                {country.topPartners.map((partner) => (
-                  <tr key={`${country.slug}-${partner.role}-${partner.name}`}>
-                    <td>{partner.name}</td>
-                    <td>{partner.sharedFlows}</td>
-                    <td>
-                      {partner.role === "import-partner" ? "When importing" : "When exporting"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <StatGrid>
+              <StatCard label="Import partners" value={String(importPartners.length)} />
+              <StatCard label="Export partners" value={String(exportPartners.length)} />
+            </StatGrid>
+
+            <div className="gridTwo">
+              <article>
+                <p className="sectionEyebrow">When importing</p>
+                {importPartners.length > 0 ? (
+                  <div className="tableWrap">
+                    <table className="flowTable">
+                      <thead>
+                        <tr>
+                          <th>Partner country</th>
+                          <th>Shared flows</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPartners.map((partner) => {
+                          const slug = partnerSlugByName.get(partner.name);
+
+                          return (
+                            <tr key={`${country.slug}-${partner.role}-${partner.name}`}>
+                              <td>
+                                {slug ? (
+                                  <Link href={`/countries/${slug}`}>{partner.name}</Link>
+                                ) : (
+                                  partner.name
+                                )}
+                              </td>
+                              <td>{partner.sharedFlows}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="sectionIntro">No import partner rows yet.</p>
+                )}
+              </article>
+
+              <article>
+                <p className="sectionEyebrow">When exporting</p>
+                {exportPartners.length > 0 ? (
+                  <div className="tableWrap">
+                    <table className="flowTable">
+                      <thead>
+                        <tr>
+                          <th>Partner country</th>
+                          <th>Shared flows</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {exportPartners.map((partner) => {
+                          const slug = partnerSlugByName.get(partner.name);
+
+                          return (
+                            <tr key={`${country.slug}-${partner.role}-${partner.name}`}>
+                              <td>
+                                {slug ? (
+                                  <Link href={`/countries/${slug}`}>{partner.name}</Link>
+                                ) : (
+                                  partner.name
+                                )}
+                              </td>
+                              <td>{partner.sharedFlows}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="sectionIntro">No export partner rows yet.</p>
+                )}
+              </article>
+            </div>
+          </>
         ) : (
           <p className="sectionIntro">No partner data available for this country yet.</p>
         )}
