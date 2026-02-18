@@ -16,6 +16,7 @@ type MaterialPageProps = {
   searchParams?: {
     year?: string;
     confidence?: string;
+    freshness?: string;
     country?: string;
   };
 };
@@ -33,16 +34,24 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
 
   const selectedYear = searchParams?.year ?? "all";
   const selectedConfidence = searchParams?.confidence ?? "all";
+  const selectedFreshness =
+    searchParams?.freshness === "Current" ||
+    searchParams?.freshness === "Recent" ||
+    searchParams?.freshness === "Stale"
+      ? searchParams.freshness
+      : "all";
   const countryQuery = (searchParams?.country ?? "").trim().toLowerCase();
 
   const filteredPoints = material.dataPoints.filter((point) => {
     const confidence = getDataPointConfidence(point);
+    const freshness = getFreshnessLabel(point.year, material.updatedAt);
     const yearMatch = selectedYear === "all" || String(point.year) === selectedYear;
     const confidenceMatch = selectedConfidence === "all" || confidence === selectedConfidence;
+    const freshnessMatch = selectedFreshness === "all" || freshness === selectedFreshness;
     const countryMatch =
       countryQuery.length === 0 || point.country.toLowerCase().includes(countryQuery);
 
-    return yearMatch && confidenceMatch && countryMatch;
+    return yearMatch && confidenceMatch && freshnessMatch && countryMatch;
   });
 
   const sortedPoints = [...material.dataPoints].sort((a, b) => b.value - a.value);
@@ -347,7 +356,7 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
 
       <Card
         title="Country records"
-        subtitle="Sorted by value for fast exporter concentration review."
+        subtitle="Sorted by value for fast exporter concentration review, with year/confidence/freshness filters."
       >
         <form method="get" className="filterActions" style={{ marginBottom: "0.75rem" }}>
           <label>
@@ -369,6 +378,16 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
               <option value="High">High</option>
               <option value="Medium">Medium</option>
               <option value="Low">Low</option>
+            </select>
+          </label>
+
+          <label>
+            Freshness
+            <select name="freshness" defaultValue={selectedFreshness}>
+              <option value="all">All freshness labels</option>
+              <option value="Current">Current</option>
+              <option value="Recent">Recent</option>
+              <option value="Stale">Stale</option>
             </select>
           </label>
 
