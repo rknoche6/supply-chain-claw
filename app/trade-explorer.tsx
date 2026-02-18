@@ -387,6 +387,29 @@ export default function TradeExplorer() {
       .slice(0, 5);
   }, [primaryExchangeLanes]);
 
+  const exchangeCoverageSnapshot = useMemo(() => {
+    const laneCount = primaryExchangeLanes.length;
+
+    const fullCoverage = primaryExchangeLanes.filter(
+      (lane) => lane.materialCoverageShare >= 100
+    ).length;
+    const partialCoverage = primaryExchangeLanes.filter(
+      (lane) => lane.materialCoverageShare > 0 && lane.materialCoverageShare < 100
+    ).length;
+    const noCoverage = primaryExchangeLanes.filter(
+      (lane) => lane.materialCoverageShare <= 0
+    ).length;
+
+    return {
+      laneCount,
+      fullCoverage,
+      partialCoverage,
+      noCoverage,
+      fullCoverageShare: laneCount > 0 ? (fullCoverage / laneCount) * 100 : 0,
+      noCoverageShare: laneCount > 0 ? (noCoverage / laneCount) * 100 : 0,
+    };
+  }, [primaryExchangeLanes]);
+
   return (
     <>
       <Card>
@@ -789,6 +812,34 @@ export default function TradeExplorer() {
       </Card>
 
       <Card
+        title="Exchange clarity snapshot"
+        subtitle="Quickly see how many high-frequency lanes are fully supported by material datasets versus where evidence is missing."
+      >
+        <StatGrid>
+          <StatCard
+            label="Primary lanes in view"
+            value={String(exchangeCoverageSnapshot.laneCount)}
+          />
+          <StatCard
+            label="Lanes with full material coverage"
+            value={`${exchangeCoverageSnapshot.fullCoverage} (${exchangeCoverageSnapshot.fullCoverageShare.toFixed(0)}%)`}
+          />
+          <StatCard
+            label="Lanes with partial coverage"
+            value={String(exchangeCoverageSnapshot.partialCoverage)}
+          />
+          <StatCard
+            label="Lanes with no direct material linkage"
+            value={`${exchangeCoverageSnapshot.noCoverage} (${exchangeCoverageSnapshot.noCoverageShare.toFixed(0)}%)`}
+          />
+        </StatGrid>
+        <p className="sectionIntro">
+          Use this snapshot to decide whether to prioritize route optimization (high full coverage)
+          or material-data expansion (high no-coverage share).
+        </p>
+      </Card>
+
+      <Card
         title="Primary exchange lanes"
         subtitle="Most repeated exporter → importer country pairs across the active filtered routes, including flow share and linked raw-material datasets."
       >
@@ -801,6 +852,7 @@ export default function TradeExplorer() {
                   <th>Importer</th>
                   <th>Matched flows</th>
                   <th>Flow share</th>
+                  <th>Material coverage</th>
                   <th>Categories</th>
                   <th>Sample products</th>
                   <th>Linked materials</th>
@@ -826,6 +878,10 @@ export default function TradeExplorer() {
                     </td>
                     <td>{lane.flowCount}</td>
                     <td>{lane.laneShare.toFixed(0)}%</td>
+                    <td>
+                      {lane.matchedFlowCount} / {lane.flowCount} (
+                      {lane.materialCoverageShare.toFixed(0)}%)
+                    </td>
                     <td>{lane.categories.join(", ")}</td>
                     <td>{lane.products.slice(0, 3).join(", ")}</td>
                     <td>
