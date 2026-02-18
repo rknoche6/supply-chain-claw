@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Container, Pill, StatCard, StatGrid } from "./components";
 import ExplorerCommandSearch from "./explorer-command-search";
+import TradeExplorer from "./trade-explorer";
 import { getCountryProfiles } from "../lib/countries";
 import { getDataPointConfidence, rawMaterials } from "../lib/raw-materials";
 import { tradeFlows } from "../lib/trade-data";
@@ -73,6 +74,8 @@ export default function HomePage() {
       </header>
 
       <ExplorerCommandSearch />
+
+      <TradeExplorer />
 
       <Card
         title="Quick launch"
