@@ -291,6 +291,7 @@ export default function TradeExplorer() {
         categories: Set<string>;
         products: string[];
         linkedMaterials: Set<string>;
+        matchedFlowCount: number;
       }
     >();
 
@@ -321,6 +322,7 @@ export default function TradeExplorer() {
         categories: new Set<string>(),
         products: [],
         linkedMaterials: new Set<string>(),
+        matchedFlowCount: 0,
       };
 
       const matchedMaterial =
@@ -339,6 +341,7 @@ export default function TradeExplorer() {
       existing.products.push(flow.product);
       if (matchedMaterial) {
         existing.linkedMaterials.add(matchedMaterial.slug);
+        existing.matchedFlowCount += 1;
       }
       laneCounts.set(laneId, existing);
     }
@@ -353,10 +356,20 @@ export default function TradeExplorer() {
           .filter((material): material is (typeof rawMaterials)[number] => material !== null)
           .sort((a, b) => a.name.localeCompare(b.name)),
         laneShare: filtered.length > 0 ? (lane.flowCount / filtered.length) * 100 : 0,
+        materialCoverageShare:
+          lane.flowCount > 0 ? (lane.matchedFlowCount / lane.flowCount) * 100 : 0,
       }))
       .sort((a, b) => b.flowCount - a.flowCount || a.exporter.localeCompare(b.exporter))
       .slice(0, 10);
   }, [countrySlugSet, filtered]);
+
+  const primaryExchangeCoverageGaps = useMemo(() => {
+    return [...primaryExchangeLanes]
+      .sort(
+        (a, b) => a.materialCoverageShare - b.materialCoverageShare || b.flowCount - a.flowCount
+      )
+      .slice(0, 5);
+  }, [primaryExchangeLanes]);
 
   return (
     <>
@@ -827,6 +840,51 @@ export default function TradeExplorer() {
           </div>
         ) : (
           <p className="sectionIntro">No exchange lanes available for the current filters.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Material coverage gaps in primary lanes"
+        subtitle="Highlight high-traffic exporter → importer lanes where material-level evidence is thin, so map insights can be validated before decisions."
+      >
+        {primaryExchangeCoverageGaps.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Lane</th>
+                  <th>Matched flows</th>
+                  <th>Material coverage</th>
+                  <th>Next step</th>
+                </tr>
+              </thead>
+              <tbody>
+                {primaryExchangeCoverageGaps.map((lane) => (
+                  <tr key={`coverage-gap-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <td>
+                      {lane.exporter} → {lane.importer}
+                    </td>
+                    <td>
+                      {lane.matchedFlowCount} / {lane.flowCount}
+                    </td>
+                    <td>{lane.materialCoverageShare.toFixed(0)}%</td>
+                    <td>
+                      {lane.linkedMaterialRecords.length > 0
+                        ? lane.linkedMaterialRecords.map((material, index) => (
+                            <span key={`coverage-material-${lane.exporterSlug}-${material.slug}`}>
+                              {index > 0 ? ", " : ""}
+                              <Link href={`/materials/${material.slug}`}>{material.name}</Link>
+                            </span>
+                          ))
+                        : "No linked materials yet — prioritize data expansion"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No primary lanes available for coverage analysis.</p>
         )}
       </Card>
 
