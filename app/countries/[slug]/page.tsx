@@ -17,6 +17,8 @@ type CountryPageProps = {
     corridorRole?: string;
     corridorCategory?: string;
     materialConfidence?: string;
+    materialYear?: string;
+    materialQuery?: string;
   };
 };
 
@@ -84,6 +86,15 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
       : "all";
   const selectedCorridorCategory = (searchParams?.corridorCategory ?? "all").trim();
   const selectedMaterialConfidence = searchParams?.materialConfidence === "all" ? "all" : "high";
+  const materialYearOptions = Array.from(
+    new Set(country.materialRecords.map((record) => record.year))
+  ).sort((a, b) => b - a);
+  const selectedMaterialYear =
+    searchParams?.materialYear === "all" ||
+    materialYearOptions.some((year) => String(year) === (searchParams?.materialYear ?? ""))
+      ? (searchParams?.materialYear ?? "all")
+      : "all";
+  const materialQuery = (searchParams?.materialQuery ?? "").trim().toLowerCase();
 
   const importPartners = country.topPartners.filter((partner) => partner.role === "import-partner");
   const exportPartners = country.topPartners.filter((partner) => partner.role === "export-partner");
@@ -384,6 +395,20 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
 
   const filteredMaterialRecords = country.materialRecords
     .filter((record) => selectedMaterialConfidence === "all" || record.confidence === "High")
+    .filter(
+      (record) => selectedMaterialYear === "all" || String(record.year) === selectedMaterialYear
+    )
+    .filter((record) => {
+      if (materialQuery.length === 0) {
+        return true;
+      }
+
+      return (
+        record.materialName.toLowerCase().includes(materialQuery) ||
+        record.category.toLowerCase().includes(materialQuery) ||
+        record.metric.toLowerCase().includes(materialQuery)
+      );
+    })
     .sort(
       (a, b) => b.year - a.year || b.value - a.value || a.materialName.localeCompare(b.materialName)
     );
@@ -688,6 +713,28 @@ export default function CountryDetailPage({ params, searchParams }: CountryPageP
               <option value="high">High-confidence only (default)</option>
               <option value="all">All confidence levels</option>
             </select>
+          </label>
+
+          <label>
+            Year
+            <select name="materialYear" defaultValue={selectedMaterialYear}>
+              <option value="all">All years</option>
+              {materialYearOptions.map((year) => (
+                <option key={`${country.slug}-material-year-${year}`} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Material search
+            <input
+              type="search"
+              name="materialQuery"
+              defaultValue={searchParams?.materialQuery ?? ""}
+              placeholder="Filter material/category/metric"
+            />
           </label>
 
           <button type="submit" className="secondaryButton">
