@@ -371,6 +371,22 @@ export default function TradeExplorer() {
       .slice(0, 5);
   }, [primaryExchangeLanes]);
 
+  const exchangeDecisionQueue = useMemo(() => {
+    return primaryExchangeLanes
+      .map((lane) => {
+        const coverageGap = Math.max(0, 100 - lane.materialCoverageShare);
+        const impactScore = lane.laneShare * coverageGap;
+
+        return {
+          ...lane,
+          coverageGap,
+          impactScore,
+        };
+      })
+      .sort((a, b) => b.impactScore - a.impactScore || b.flowCount - a.flowCount)
+      .slice(0, 5);
+  }, [primaryExchangeLanes]);
+
   return (
     <>
       <Card>
@@ -885,6 +901,59 @@ export default function TradeExplorer() {
           </div>
         ) : (
           <p className="sectionIntro">No primary lanes available for coverage analysis.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Lane decision queue"
+        subtitle="Prioritize exporter → importer lanes where map impact is high and material evidence is thin."
+      >
+        {exchangeDecisionQueue.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Priority lane</th>
+                  <th>Flow share</th>
+                  <th>Material coverage</th>
+                  <th>Coverage gap</th>
+                  <th>Priority score</th>
+                  <th>Action bundle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exchangeDecisionQueue.map((lane) => (
+                  <tr key={`decision-queue-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <td>
+                      {lane.exporter} → {lane.importer}
+                    </td>
+                    <td>{lane.laneShare.toFixed(0)}%</td>
+                    <td>{lane.materialCoverageShare.toFixed(0)}%</td>
+                    <td>{lane.coverageGap.toFixed(0)}%</td>
+                    <td>{lane.impactScore.toFixed(0)}</td>
+                    <td>
+                      {lane.compareHref ? (
+                        <Link href={lane.compareHref}>Compare countries</Link>
+                      ) : null}
+                      {lane.compareHref && lane.linkedMaterialRecords.length > 0 ? " · " : null}
+                      {lane.linkedMaterialRecords.length > 0
+                        ? lane.linkedMaterialRecords.slice(0, 2).map((material, index) => (
+                            <span
+                              key={`decision-lane-material-${lane.exporterSlug}-${material.slug}`}
+                            >
+                              {index > 0 ? ", " : ""}
+                              <Link href={`/materials/${material.slug}`}>{material.name}</Link>
+                            </span>
+                          ))
+                        : "No linked materials yet"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No lanes available for decision queue prioritization.</p>
         )}
       </Card>
 
