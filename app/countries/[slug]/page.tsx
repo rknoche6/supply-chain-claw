@@ -196,6 +196,53 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     }))
     .sort((a, b) => b.recordCount - a.recordCount || a.category.localeCompare(b.category));
 
+  const yearlyMaterialEvidence = Array.from(
+    country.materialRecords
+      .reduce(
+        (map, record) => {
+          const existing = map.get(record.year) ?? {
+            year: record.year,
+            recordCount: 0,
+            highConfidenceCount: 0,
+            materials: new Set<string>(),
+            sources: new Set<string>(),
+          };
+
+          existing.recordCount += 1;
+          if (record.confidence === "High") {
+            existing.highConfidenceCount += 1;
+          }
+
+          existing.materials.add(record.materialSlug);
+          existing.sources.add(record.sourceUrl);
+
+          map.set(record.year, existing);
+          return map;
+        },
+        new Map<
+          number,
+          {
+            year: number;
+            recordCount: number;
+            highConfidenceCount: number;
+            materials: Set<string>;
+            sources: Set<string>;
+          }
+        >()
+      )
+      .values()
+  )
+    .map((entry) => ({
+      year: entry.year,
+      recordCount: entry.recordCount,
+      highConfidenceCount: entry.highConfidenceCount,
+      materialCount: entry.materials.size,
+      sourceCount: entry.sources.size,
+      highConfidenceShare:
+        entry.recordCount > 0 ? (entry.highConfidenceCount / entry.recordCount) * 100 : 0,
+    }))
+    .sort((a, b) => b.year - a.year);
+
   const partnerRouteCoverage = tradeFlows
     .flatMap((flow) => {
       const isImporter = flow.topImporters.includes(country.name);
@@ -549,6 +596,43 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           </div>
         ) : (
           <p className="sectionIntro">No source-cited material records for this country yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Yearly material evidence"
+        subtitle="How many exact material records are captured per year, including confidence density and source breadth."
+      >
+        {yearlyMaterialEvidence.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Records</th>
+                  <th>Materials</th>
+                  <th>High-confidence</th>
+                  <th>Distinct sources</th>
+                </tr>
+              </thead>
+              <tbody>
+                {yearlyMaterialEvidence.map((entry) => (
+                  <tr key={`${country.slug}-yearly-evidence-${entry.year}`}>
+                    <td>{entry.year}</td>
+                    <td>{entry.recordCount}</td>
+                    <td>{entry.materialCount}</td>
+                    <td>
+                      {entry.highConfidenceCount}/{entry.recordCount} (
+                      {entry.highConfidenceShare.toFixed(1)}%)
+                    </td>
+                    <td>{entry.sourceCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No yearly material evidence rows yet.</p>
         )}
       </Card>
 
