@@ -14,6 +14,7 @@ type SortMode = "relevance" | "product" | "importers" | "exporters";
 type CountryRoleFilter = "any" | "importer" | "exporter";
 type MaterialLinkMode = "all" | "linked" | "unlinked";
 type MaterialMatchQuality = "all" | "exact" | "partial" | "none";
+type LaneCoverageFilter = "all" | "full" | "partial" | "gap";
 
 type CountryTagListProps = {
   countries: string[];
@@ -84,6 +85,7 @@ export default function TradeExplorer() {
   const [countryRole, setCountryRole] = useState<CountryRoleFilter>("any");
   const [materialLinkMode, setMaterialLinkMode] = useState<MaterialLinkMode>("all");
   const [materialMatchQuality, setMaterialMatchQuality] = useState<MaterialMatchQuality>("all");
+  const [laneCoverageFilter, setLaneCoverageFilter] = useState<LaneCoverageFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [pageSize, setPageSize] = useState(6);
@@ -110,7 +112,7 @@ export default function TradeExplorer() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return tradeFlows.filter((flow) => {
+    const prefiltered = tradeFlows.filter((flow) => {
       const byCategory = category === "All" || flow.category === category;
       const byCountry =
         country === "All countries" ||
@@ -133,7 +135,66 @@ export default function TradeExplorer() {
 
       return byCategory && byCountry && byQuery && byMaterialLink && byMatchQuality;
     });
-  }, [category, country, countryRole, materialLinkMode, materialMatchQuality, query]);
+
+    if (laneCoverageFilter === "all") {
+      return prefiltered;
+    }
+
+    const laneCoverage = new Map<string, { flowCount: number; matchedFlowCount: number }>();
+
+    for (const flow of prefiltered) {
+      const exporter = flow.topExporters[0] ?? null;
+      const importer = flow.topImporters[0] ?? null;
+
+      if (!exporter || !importer) {
+        continue;
+      }
+
+      const laneId = `${exporter}→${importer}`;
+      const existing = laneCoverage.get(laneId) ?? { flowCount: 0, matchedFlowCount: 0 };
+
+      existing.flowCount += 1;
+      if (getMaterialMatch(flow.product).quality !== "none") {
+        existing.matchedFlowCount += 1;
+      }
+
+      laneCoverage.set(laneId, existing);
+    }
+
+    return prefiltered.filter((flow) => {
+      const exporter = flow.topExporters[0] ?? null;
+      const importer = flow.topImporters[0] ?? null;
+
+      if (!exporter || !importer) {
+        return laneCoverageFilter === "gap";
+      }
+
+      const lane = laneCoverage.get(`${exporter}→${importer}`);
+      if (!lane || lane.flowCount === 0) {
+        return laneCoverageFilter === "gap";
+      }
+
+      const coverageShare = (lane.matchedFlowCount / lane.flowCount) * 100;
+
+      if (laneCoverageFilter === "full") {
+        return coverageShare >= 100;
+      }
+
+      if (laneCoverageFilter === "partial") {
+        return coverageShare > 0 && coverageShare < 100;
+      }
+
+      return coverageShare <= 0;
+    });
+  }, [
+    category,
+    country,
+    countryRole,
+    laneCoverageFilter,
+    materialLinkMode,
+    materialMatchQuality,
+    query,
+  ]);
 
   const sortedFlows = useMemo(() => {
     const items = [...filtered];
@@ -162,6 +223,7 @@ export default function TradeExplorer() {
     countryRole,
     materialLinkMode,
     materialMatchQuality,
+    laneCoverageFilter,
     sortMode,
     viewMode,
     pageSize,
@@ -586,6 +648,19 @@ export default function TradeExplorer() {
               <option value="none">No material match</option>
             </select>
           </label>
+
+          <label>
+            Lane material coverage
+            <select
+              value={laneCoverageFilter}
+              onChange={(e) => setLaneCoverageFilter(e.target.value as LaneCoverageFilter)}
+            >
+              <option value="all">All lane coverage states</option>
+              <option value="full">Fully linked lanes only</option>
+              <option value="partial">Partially linked lanes only</option>
+              <option value="gap">No-link coverage gaps only</option>
+            </select>
+          </label>
         </div>
 
         {country === "All countries" && countryRole !== "any" ? (
@@ -605,6 +680,7 @@ export default function TradeExplorer() {
               setCountryRole("any");
               setMaterialLinkMode("all");
               setMaterialMatchQuality("all");
+              setLaneCoverageFilter("all");
               setSortMode("relevance");
               setPageSize(6);
               setPage(1);
@@ -666,6 +742,15 @@ export default function TradeExplorer() {
                 Match quality: {materialMatchQuality} ×
               </button>
             ) : null}
+            {laneCoverageFilter !== "all" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setLaneCoverageFilter("all")}
+              >
+                Lane coverage: {laneCoverageFilter} ×
+              </button>
+            ) : null}
             {sortMode !== "relevance" ? (
               <button
                 type="button"
@@ -681,6 +766,7 @@ export default function TradeExplorer() {
             countryRole === "any" &&
             materialLinkMode === "all" &&
             materialMatchQuality === "all" &&
+            laneCoverageFilter === "all" &&
             sortMode === "relevance" ? (
               <span className="sectionIntro">None</span>
             ) : null}
