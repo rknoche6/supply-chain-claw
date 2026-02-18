@@ -589,6 +589,25 @@ export default function TradeExplorer() {
     };
   }, [primaryExchangeLanes]);
 
+  const laneReadinessBoard = useMemo(() => {
+    const groups = {
+      full: primaryExchangeLanes
+        .filter((lane) => lane.materialCoverageShare >= 100)
+        .sort((a, b) => b.laneShare - a.laneShare)
+        .slice(0, 4),
+      partial: primaryExchangeLanes
+        .filter((lane) => lane.materialCoverageShare > 0 && lane.materialCoverageShare < 100)
+        .sort((a, b) => b.laneShare - a.laneShare)
+        .slice(0, 4),
+      gap: primaryExchangeLanes
+        .filter((lane) => lane.materialCoverageShare <= 0)
+        .sort((a, b) => b.laneShare - a.laneShare)
+        .slice(0, 4),
+    };
+
+    return groups;
+  }, [primaryExchangeLanes]);
+
   return (
     <>
       <Card>
@@ -1212,6 +1231,94 @@ export default function TradeExplorer() {
         <p className="sectionIntro">
           Use this snapshot to decide whether to prioritize route optimization (high full coverage)
           or material-data expansion (high no-coverage share).
+        </p>
+      </Card>
+
+      <Card
+        title="Lane readiness board"
+        subtitle="Group top lanes by evidence readiness so route teams can split work quickly: optimize now, fill gaps, then verify partials."
+      >
+        <div className="gridThree">
+          <article className="statCard">
+            <p className="statLabel">Ready now (full coverage)</p>
+            {laneReadinessBoard.full.length > 0 ? (
+              <ul className="miniList">
+                {laneReadinessBoard.full.map((lane) => (
+                  <li key={`ready-full-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <button
+                      type="button"
+                      className="quickFilterButton"
+                      onClick={() =>
+                        focusLaneOnMap({ exporter: lane.exporter, importer: lane.importer })
+                      }
+                    >
+                      {lane.exporter} → {lane.importer}{" "}
+                      <span>({lane.laneShare.toFixed(0)}% share)</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sectionIntro">No full-coverage lanes in this filter scope.</p>
+            )}
+          </article>
+
+          <article className="statCard">
+            <p className="statLabel">Needs verification (partial)</p>
+            {laneReadinessBoard.partial.length > 0 ? (
+              <ul className="miniList">
+                {laneReadinessBoard.partial.map((lane) => (
+                  <li key={`ready-partial-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <button
+                      type="button"
+                      className="quickFilterButton"
+                      onClick={() =>
+                        focusLaneOnMap({
+                          exporter: lane.exporter,
+                          importer: lane.importer,
+                          linkedOnly: true,
+                        })
+                      }
+                    >
+                      {lane.exporter} → {lane.importer}{" "}
+                      <span>({lane.materialCoverageShare.toFixed(0)}% linked)</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sectionIntro">No partially linked lanes in this filter scope.</p>
+            )}
+          </article>
+
+          <article className="statCard">
+            <p className="statLabel">Needs data expansion (gap)</p>
+            {laneReadinessBoard.gap.length > 0 ? (
+              <ul className="miniList">
+                {laneReadinessBoard.gap.map((lane) => (
+                  <li key={`ready-gap-${lane.exporterSlug}-${lane.importerSlug}`}>
+                    <button
+                      type="button"
+                      className="quickFilterButton"
+                      onClick={() =>
+                        focusLaneOnMap({ exporter: lane.exporter, importer: lane.importer })
+                      }
+                    >
+                      {lane.exporter} → {lane.importer}{" "}
+                      <span>({lane.laneShare.toFixed(0)}% share · 0% linked)</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sectionIntro">No gap lanes in this filter scope.</p>
+            )}
+          </article>
+        </div>
+        <p className="sectionIntro">
+          Suggested handoff: assign &quot;Ready now&quot; lanes to optimization, &quot;Needs
+          verification&quot; lanes to source checks, and &quot;Needs data expansion&quot; lanes to
+          dataset enrichment.
         </p>
       </Card>
 
