@@ -1309,18 +1309,58 @@ export default function TradeExplorer() {
                             <strong>No direct material evidence yet</strong>
                           )}
                         </li>
+                        <li>
+                          Evidence mix in this lane:{" "}
+                          <strong>{selectedRouteLaneCoverage.exactMatchCount}</strong> exact ·{" "}
+                          <strong>{selectedRouteLaneCoverage.partialMatchCount}</strong> partial ·{" "}
+                          <strong>{selectedRouteLaneCoverage.noMatchCount}</strong> gaps
+                        </li>
                       </>
                     ) : null}
                   </ul>
                   {selectedRouteLaneCoverage ? (
-                    <p className="sectionIntro">
-                      Next best action:{" "}
-                      {selectedRouteLaneCoverage.materialCoverageShare >= 100
-                        ? "optimize route decisions first (material evidence is complete)."
-                        : selectedRouteLaneCoverage.materialCoverageShare > 0
-                          ? "validate missing material links before committing lane-level decisions."
-                          : "prioritize dataset expansion for this lane before route optimization."}
-                    </p>
+                    <>
+                      <p className="sectionIntro">
+                        Linked material records in this lane:{" "}
+                        <strong>{selectedRouteLaneCoverage.linkedMaterialRecords.length}</strong>
+                      </p>
+                      {selectedRouteLaneCoverage.linkedMaterialRecords.length > 0 ? (
+                        <CountryTagList
+                          countries={selectedRouteLaneCoverage.linkedMaterialRecords.map(
+                            (material) => material.name
+                          )}
+                          activeCountry=""
+                          onPickCountry={(materialName) => {
+                            const material = selectedRouteLaneCoverage.linkedMaterialRecords.find(
+                              (record) => record.name === materialName
+                            );
+
+                            if (material) {
+                              window.location.href = `/materials/${material.slug}`;
+                            }
+                          }}
+                        />
+                      ) : null}
+                      {selectedRouteLaneCoverage.unmatchedProducts.length > 0 ? (
+                        <p className="sectionIntro">
+                          Unmatched products to prioritize for dataset expansion:{" "}
+                          <strong>
+                            {selectedRouteLaneCoverage.unmatchedProducts.slice(0, 3).join(", ")}
+                            {selectedRouteLaneCoverage.unmatchedProducts.length > 3
+                              ? ` (+${selectedRouteLaneCoverage.unmatchedProducts.length - 3} more)`
+                              : ""}
+                          </strong>
+                        </p>
+                      ) : null}
+                      <p className="sectionIntro">
+                        Next best action:{" "}
+                        {selectedRouteLaneCoverage.materialCoverageShare >= 100
+                          ? "optimize route decisions first (material evidence is complete)."
+                          : selectedRouteLaneCoverage.materialCoverageShare > 0
+                            ? "validate missing material links before committing lane-level decisions."
+                            : "prioritize dataset expansion for this lane before route optimization."}
+                      </p>
+                    </>
                   ) : null}
                   {!selectedRoute.matchedMaterial ? (
                     <button
