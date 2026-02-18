@@ -201,18 +201,25 @@ export default function TradeExplorer() {
         countrySlugSet.has(exporterSlug) &&
         importerSlug !== exporterSlug;
 
+      const routeStops = flow.keyRoute.split("→").map((item) => item.trim());
+      const matchesCountryFilter =
+        country !== "All countries" &&
+        (flow.topImporters.includes(country) || flow.topExporters.includes(country));
+
       return {
         id: `${flow.product}-${index}`,
         product: flow.product,
-        stops: flow.keyRoute.split("→").map((item) => item.trim()),
+        category: flow.category,
+        stops: routeStops,
         topImporter,
         topExporter,
+        matchesCountryFilter,
         compareHref: hasCompareCountries
           ? `/compare?leftCountry=${exporterSlug}&rightCountry=${importerSlug}`
           : null,
       };
     });
-  }, [countrySlugSet, filtered]);
+  }, [country, countrySlugSet, filtered]);
 
   useEffect(() => {
     if (mappedRoutes.length === 0) {
@@ -546,7 +553,11 @@ export default function TradeExplorer() {
               </>
             ) : null}
 
-            <RouteMap routes={mappedRoutes} selectedRouteId={selectedRouteId} />
+            <RouteMap
+              routes={mappedRoutes}
+              selectedRouteId={selectedRouteId}
+              selectedCountry={country === "All countries" ? null : country}
+            />
           </>
         ) : (
           <p className="sectionIntro">No mappable routes for the current filters.</p>

@@ -1,13 +1,42 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { ComposableMap, Geographies, Geography, Line, Marker } from "react-simple-maps";
 
+type MappedRoute = {
+  id: string;
+  product: string;
+  category: "Semiconductors" | "Raw Materials" | "Agriculture" | "Energy";
+  stops: string[];
+  matchesCountryFilter: boolean;
+};
+
 type RouteMapProps = {
-  routes: { id: string; product: string; stops: string[] }[];
+  routes: MappedRoute[];
   selectedRouteId: string | null;
+  selectedCountry: string | null;
+};
+
+type RouteSegment = {
+  routeId: string;
+  product: string;
+  category: MappedRoute["category"];
+  fromName: string;
+  toName: string;
+  from: [number, number];
+  to: [number, number];
+  isSelectedRoute: boolean;
+  matchesCountryFilter: boolean;
 };
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const categoryColor: Record<MappedRoute["category"], string> = {
+  Semiconductors: "#78c8ff",
+  "Raw Materials": "#ffc857",
+  Agriculture: "#98f5c9",
+  Energy: "#ff8fa3",
+};
 
 const portCoordinates: Record<string, [number, number]> = {
   Taipei: [121.56, 25.04],
@@ -27,21 +56,57 @@ const portCoordinates: Record<string, [number, number]> = {
   Yokohama: [139.64, 35.44],
 };
 
-export default function RouteMap({ routes, selectedRouteId }: RouteMapProps) {
-  const filteredRoutes = routes
-    .map((route) => ({
-      ...route,
-      points: route.stops.map((stop) => portCoordinates[stop]).filter(Boolean),
-    }))
-    .filter((route) => route.points.length > 1);
+export default function RouteMap({ routes, selectedRouteId, selectedCountry }: RouteMapProps) {
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+
+  const normalizedRoutes = useMemo(
+    () =>
+      routes
+        .map((route) => ({
+          ...route,
+          points: route.stops.map((stop) => portCoordinates[stop]).filter(Boolean),
+        }))
+        .filter((route) => route.points.length > 1),
+    [routes]
+  );
 
   const selectedRoute =
     selectedRouteId === null
       ? null
-      : (filteredRoutes.find((route) => route.id === selectedRouteId) ?? null);
+      : (normalizedRoutes.find((route) => route.id === selectedRouteId) ?? null);
+
+  const segments = useMemo(() => {
+    const rows: RouteSegment[] = [];
+
+    for (const route of normalizedRoutes) {
+      for (let i = 1; i < route.points.length; i += 1) {
+        rows.push({
+          routeId: route.id,
+          product: route.product,
+          category: route.category,
+          fromName: route.stops[i - 1],
+          toName: route.stops[i],
+          from: route.points[i - 1],
+          to: route.points[i],
+          isSelectedRoute: selectedRouteId === null || route.id === selectedRouteId,
+          matchesCountryFilter: route.matchesCountryFilter,
+        });
+      }
+    }
+
+    return rows;
+  }, [normalizedRoutes, selectedRouteId]);
+
+  const activeSegment =
+    activeSegmentId === null
+      ? null
+      : (segments.find((segment, index) => `${segment.routeId}-${index}` === activeSegmentId) ??
+        null);
 
   const uniquePorts = Array.from(
-    new Set(filteredRoutes.flatMap((route) => route.stops).filter((stop) => portCoordinates[stop]))
+    new Set(
+      normalizedRoutes.flatMap((route) => route.stops).filter((stop) => portCoordinates[stop])
+    )
   );
 
   const highlightedPorts = selectedRoute ? selectedRoute.stops : uniquePorts;
@@ -50,7 +115,7 @@ export default function RouteMap({ routes, selectedRouteId }: RouteMapProps) {
     <div
       className="mapFrame mapFrame--enhanced"
       role="img"
-      aria-label="Map of filtered supply routes"
+      aria-label="Map of filtered supply routes with material color legend"
     >
       <ComposableMap projection="geoMercator" projectionConfig={{ scale: 135 }}>
         <Geographies geography={geoUrl}>
@@ -69,45 +134,73 @@ export default function RouteMap({ routes, selectedRouteId }: RouteMapProps) {
           }
         </Geographies>
 
-        {filteredRoutes.map((route, index) => {
-          const isSelected = selectedRoute === null || route.id === selectedRoute.id;
+        {segments.map((segment, index) => {
+          const segmentId = `${segment.routeId}-${index}`;
+          const isActive = activeSegmentId === segmentId;
+          const shouldEmphasize =
+            segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true);
+          const color = categoryColor[segment.category];
 
-          return route.points.slice(1).map((end, i) => {
-            const start = route.points[i];
-            return (
-              <Line
-                key={`${route.id}-${i}`}
-                from={start}
-                to={end}
-                stroke={isSelected ? "#7fd1ff" : "#5b84b5"}
-                strokeWidth={isSelected ? 1.8 + (index % 2) * 0.5 : 1}
-                strokeLinecap="round"
-                strokeOpacity={isSelected ? 0.82 : 0.2}
-              />
-            );
-          });
+          return (
+            <Line
+              key={segmentId}
+              from={segment.from}
+              to={segment.to}
+              stroke={color}
+              strokeWidth={isActive ? 3 : shouldEmphasize ? 2.2 : 1}
+              strokeLinecap="round"
+              strokeOpacity={isActive ? 1 : shouldEmphasize ? 0.84 : 0.18}
+              onMouseEnter={() => setActiveSegmentId(segmentId)}
+              onMouseLeave={() => setActiveSegmentId((prev) => (prev === segmentId ? null : prev))}
+              onClick={() => setActiveSegmentId(segmentId)}
+            />
+          );
         })}
 
         {highlightedPorts.map((port) => (
           <Marker key={port} coordinates={portCoordinates[port]}>
             <circle
-              r={selectedRoute ? 2.8 : 2.4}
+              r={selectedRoute ? 3.2 : 2.8}
               fill="#ffe28a"
               stroke="#f4b42c"
-              strokeWidth={0.7}
+              strokeWidth={0.8}
             />
           </Marker>
         ))}
       </ComposableMap>
 
+      <div className="mapLegend mapLegend--blocks" aria-label="Material category color legend">
+        {(Object.keys(categoryColor) as Array<keyof typeof categoryColor>).map((category) => (
+          <span key={`legend-${category}`} className="mapLegendItem">
+            <span className="mapLegendDot" style={{ backgroundColor: categoryColor[category] }} />
+            {category}
+          </span>
+        ))}
+      </div>
+
       <div className="mapLegend">
         <span>
-          Routes: <strong>{filteredRoutes.length}</strong>
+          Routes: <strong>{normalizedRoutes.length}</strong>
         </span>
         <span>
           Ports: <strong>{highlightedPorts.length}</strong>
         </span>
+        <span>
+          Country highlight: <strong>{selectedCountry ?? "Off"}</strong>
+        </span>
       </div>
+
+      <p className="sectionIntro">Tap or hover a route segment for material + corridor details.</p>
+      {activeSegment ? (
+        <div className="mapRouteDetail" role="status" aria-live="polite">
+          <p>
+            <strong>{activeSegment.product}</strong> · {activeSegment.category}
+          </p>
+          <p>
+            {activeSegment.fromName} → {activeSegment.toName}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

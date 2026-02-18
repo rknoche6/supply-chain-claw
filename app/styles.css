@@ -269,6 +269,38 @@ p {
   margin-top: var(--space-2);
 }
 
+.mapLegend--blocks {
+  justify-content: flex-start;
+}
+
+.mapLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(11, 16, 32, 0.45);
+  padding: 0.2rem 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.mapLegendDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.mapRouteDetail {
+  margin-top: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: rgba(120, 200, 255, 0.1);
+  padding: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+}
+
 .routePicker {
   display: grid;
   gap: var(--space-2);
