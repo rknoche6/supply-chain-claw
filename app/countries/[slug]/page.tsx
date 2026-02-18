@@ -243,6 +243,42 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
     }))
     .sort((a, b) => b.year - a.year);
 
+  const materialTrendSignals = Array.from(
+    country.materialRecords
+      .reduce((map, record) => {
+        const existing = map.get(record.materialSlug) ?? [];
+        existing.push(record);
+        map.set(record.materialSlug, existing);
+        return map;
+      }, new Map<string, typeof country.materialRecords>())
+      .entries()
+  )
+    .map(([materialSlug, records]) => {
+      const sorted = [...records].sort((a, b) => b.year - a.year || b.value - a.value);
+      const latest = sorted[0];
+      const previous = sorted.find((record) => record.year < latest.year) ?? null;
+      const sameUnitAndMetric =
+        previous !== null && latest.unit === previous.unit && latest.metric === previous.metric;
+      const valueDelta = sameUnitAndMetric && previous ? latest.value - previous.value : null;
+      const valueDeltaPercent =
+        sameUnitAndMetric && previous && previous.value !== 0
+          ? (latest.value - previous.value) / previous.value
+          : null;
+
+      return {
+        materialSlug,
+        materialName: latest.materialName,
+        metric: latest.metric,
+        unit: latest.unit,
+        latest,
+        previous,
+        valueDelta,
+        valueDeltaPercent,
+        sourceCount: new Set(records.map((record) => record.sourceUrl)).size,
+      };
+    })
+    .sort((a, b) => b.latest.year - a.latest.year || a.materialName.localeCompare(b.materialName));
+
   const partnerRouteCoverage = tradeFlows
     .flatMap((flow) => {
       const isImporter = flow.topImporters.includes(country.name);
@@ -633,6 +669,73 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           </div>
         ) : (
           <p className="sectionIntro">No yearly material evidence rows yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Material trend signals"
+        subtitle="Latest country value by material with year-over-year deltas when metric/unit match, plus direct citations."
+      >
+        {materialTrendSignals.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Latest value</th>
+                  <th>Prior value</th>
+                  <th>YoY delta</th>
+                  <th>Confidence / freshness</th>
+                  <th>Source links</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materialTrendSignals.map((entry) => (
+                  <tr key={`${country.slug}-trend-signal-${entry.materialSlug}`}>
+                    <td>
+                      <Link href={`/materials/${entry.materialSlug}`}>{entry.materialName}</Link>
+                    </td>
+                    <td>
+                      {entry.latest.value.toLocaleString()} {entry.unit} ({entry.latest.year})
+                    </td>
+                    <td>
+                      {entry.previous
+                        ? `${entry.previous.value.toLocaleString()} ${entry.previous.unit} (${entry.previous.year})`
+                        : "No earlier year in current dataset"}
+                    </td>
+                    <td>
+                      {entry.valueDelta !== null ? (
+                        <>
+                          {entry.valueDelta >= 0 ? "+" : ""}
+                          {entry.valueDelta.toLocaleString()} {entry.unit}
+                          {entry.valueDeltaPercent !== null
+                            ? ` (${entry.valueDeltaPercent >= 0 ? "+" : ""}${(
+                                entry.valueDeltaPercent * 100
+                              ).toFixed(1)}%)`
+                            : ""}
+                        </>
+                      ) : entry.previous ? (
+                        "Not directly comparable"
+                      ) : (
+                        "Baseline"
+                      )}
+                    </td>
+                    <td>
+                      {entry.latest.confidence} / {entry.latest.freshness}
+                    </td>
+                    <td>
+                      <a href={entry.latest.sourceUrl} target="_blank" rel="noreferrer">
+                        {entry.latest.sourceName}
+                      </a>
+                      {entry.sourceCount > 1 ? ` (+${entry.sourceCount - 1} more)` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No material trend rows available for this country yet.</p>
         )}
       </Card>
 
