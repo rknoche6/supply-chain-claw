@@ -55,7 +55,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </div>
         </header>
+
         {children}
+
+        <footer className="siteFooter" aria-label="Legal footer">
+          <div className="siteFooterInner">
+            <p>© {new Date().getUTCFullYear()} Supply Chain Claw</p>
+            <nav className="footerNav" aria-label="Legal navigation">
+              <Link href="/legal/privacy">Privacy</Link>
+              <Link href="/legal/terms">Terms</Link>
+              <Link href="/legal/imprint">Imprint</Link>
+              <Link href="/methodology">Methodology</Link>
+            </nav>
+          </div>
+        </footer>
       </body>
     </html>
   );
