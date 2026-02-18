@@ -71,6 +71,23 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
   const getPartnerShare = (sharedFlows: number, totalFlows: number) =>
     totalFlows > 0 ? (sharedFlows / totalFlows) * 100 : 0;
 
+  const comparePartnerShortcuts = Array.from(
+    new Set(
+      country.topPartners
+        .map((partner) => ({
+          name: partner.name,
+          slug: partnerSlugByName.get(partner.name) ?? null,
+        }))
+        .filter((partner): partner is { name: string; slug: string } => partner.slug !== null)
+        .map((partner) => `${partner.name}::${partner.slug}`)
+    )
+  )
+    .map((entry) => {
+      const [name, slug] = entry.split("::");
+      return { name, slug };
+    })
+    .slice(0, 6);
+
   const partnerRoleMatrix = Array.from(
     country.topPartners
       .reduce(
@@ -153,6 +170,42 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
             )}
           />
         </StatGrid>
+      </Card>
+
+      <Card
+        title="Compare shortcuts"
+        subtitle="Launch prefilled country-vs-country comparisons from this detail page."
+      >
+        <p className="sectionIntro">
+          Baseline: <strong>{country.name}</strong> as the left country in compare view.
+        </p>
+        {comparePartnerShortcuts.length > 0 ? (
+          <div className="linkChipList">
+            {comparePartnerShortcuts.map((partner) => {
+              const compareParams = new URLSearchParams({
+                leftCountry: country.slug,
+                rightCountry: partner.slug,
+              });
+
+              return (
+                <Link
+                  key={`${country.slug}-compare-${partner.slug}`}
+                  href={`/compare?${compareParams.toString()}`}
+                  className="linkChip"
+                >
+                  <span>
+                    {country.name} vs {partner.name}
+                  </span>
+                  <span>Open compare</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="sectionIntro">
+            No mapped partner country pages available yet for quick compare links.
+          </p>
+        )}
       </Card>
 
       <Card
