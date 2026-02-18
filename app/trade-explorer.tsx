@@ -322,6 +322,7 @@ export default function TradeExplorer() {
         categories: Set<string>;
         products: string[];
         linkedMaterials: Set<string>;
+        unmatchedProducts: Set<string>;
         matchedFlowCount: number;
       }
     >();
@@ -353,6 +354,7 @@ export default function TradeExplorer() {
         categories: new Set<string>(),
         products: [],
         linkedMaterials: new Set<string>(),
+        unmatchedProducts: new Set<string>(),
         matchedFlowCount: 0,
       };
 
@@ -373,6 +375,8 @@ export default function TradeExplorer() {
       if (matchedMaterial) {
         existing.linkedMaterials.add(matchedMaterial.slug);
         existing.matchedFlowCount += 1;
+      } else {
+        existing.unmatchedProducts.add(flow.product);
       }
       laneCounts.set(laneId, existing);
     }
@@ -382,6 +386,7 @@ export default function TradeExplorer() {
         ...lane,
         categories: Array.from(lane.categories).sort((a, b) => a.localeCompare(b)),
         products: Array.from(new Set(lane.products)).sort((a, b) => a.localeCompare(b)),
+        unmatchedProducts: Array.from(lane.unmatchedProducts).sort((a, b) => a.localeCompare(b)),
         linkedMaterialRecords: Array.from(lane.linkedMaterials)
           .map((slug) => rawMaterials.find((material) => material.slug === slug) ?? null)
           .filter((material): material is (typeof rawMaterials)[number] => material !== null)
@@ -1000,6 +1005,7 @@ export default function TradeExplorer() {
                   <th>Material coverage</th>
                   <th>Categories</th>
                   <th>Sample products</th>
+                  <th>Unlinked products</th>
                   <th>Linked materials</th>
                   <th>Drilldowns</th>
                 </tr>
@@ -1029,6 +1035,11 @@ export default function TradeExplorer() {
                     </td>
                     <td>{lane.categories.join(", ")}</td>
                     <td>{lane.products.slice(0, 3).join(", ")}</td>
+                    <td>
+                      {lane.unmatchedProducts.length > 0
+                        ? lane.unmatchedProducts.slice(0, 3).join(", ")
+                        : "None"}
+                    </td>
                     <td>
                       {lane.linkedMaterialRecords.length > 0
                         ? lane.linkedMaterialRecords.map((material, index) => (
@@ -1104,7 +1115,13 @@ export default function TradeExplorer() {
                               <Link href={`/materials/${material.slug}`}>{material.name}</Link>
                             </span>
                           ))
-                        : "No linked materials yet — prioritize data expansion"}
+                        : "No linked materials yet"}
+                      {lane.unmatchedProducts.length > 0 ? (
+                        <>
+                          <br />
+                          Missing products: {lane.unmatchedProducts.slice(0, 2).join(", ")}
+                        </>
+                      ) : null}
                     </td>
                     <td>
                       <button
