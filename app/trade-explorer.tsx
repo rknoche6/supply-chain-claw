@@ -381,6 +381,27 @@ export default function TradeExplorer() {
       ? null
       : (mappedRoutes.find((route) => route.id === selectedRouteId) ?? null);
 
+  const selectedRouteSegments = useMemo(() => {
+    if (!selectedRoute || selectedRoute.stops.length < 2) {
+      return [];
+    }
+
+    const lastSegmentIndex = selectedRoute.stops.length - 2;
+
+    return selectedRoute.stops.slice(1).map((to, index) => {
+      const from = selectedRoute.stops[index];
+      const legType =
+        index === 0 ? "Export leg" : index === lastSegmentIndex ? "Import leg" : "Transit leg";
+
+      return {
+        legNumber: index + 1,
+        legType,
+        from,
+        to,
+      };
+    });
+  }, [selectedRoute]);
+
   const focusLaneOnMap = ({
     exporter,
     importer,
@@ -1049,6 +1070,22 @@ export default function TradeExplorer() {
                 ) : null}
 
                 <div className="mapRouteDetail" role="status" aria-live="polite">
+                  <p>
+                    <strong>Exchange handoff timeline</strong>
+                  </p>
+                  {selectedRouteSegments.length > 0 ? (
+                    <ul className="miniList">
+                      {selectedRouteSegments.map((segment) => (
+                        <li key={`${selectedRoute.id}-${segment.legNumber}`}>
+                          Leg {segment.legNumber} ({segment.legType}):{" "}
+                          <strong>{segment.from}</strong> → <strong>{segment.to}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="sectionIntro">No handoff segments available for this route.</p>
+                  )}
+
                   <p>
                     <strong>Route readiness checklist</strong>
                   </p>
