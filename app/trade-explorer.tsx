@@ -12,6 +12,7 @@ type CategoryFilter = (typeof categories)[number];
 type ViewMode = "cards" | "table";
 type SortMode = "relevance" | "product" | "importers" | "exporters";
 type CountryRoleFilter = "any" | "importer" | "exporter";
+type MaterialLinkMode = "all" | "linked";
 
 type CountryTagListProps = {
   countries: string[];
@@ -42,6 +43,7 @@ export default function TradeExplorer() {
   const [category, setCategory] = useState<CategoryFilter>("All");
   const [country, setCountry] = useState("All countries");
   const [countryRole, setCountryRole] = useState<CountryRoleFilter>("any");
+  const [materialLinkMode, setMaterialLinkMode] = useState<MaterialLinkMode>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [pageSize, setPageSize] = useState(6);
@@ -80,9 +82,20 @@ export default function TradeExplorer() {
         flow.keyRoute.toLowerCase().includes(q) ||
         flow.topImporters.some((item) => item.toLowerCase().includes(q)) ||
         flow.topExporters.some((item) => item.toLowerCase().includes(q));
-      return byCategory && byCountry && byQuery;
+      const hasMaterialDataset = rawMaterials.some((material) => {
+        const materialName = material.name.toLowerCase();
+        const normalizedFlowProduct = flow.product.toLowerCase();
+
+        return (
+          normalizedFlowProduct.includes(materialName) ||
+          materialName.includes(normalizedFlowProduct)
+        );
+      });
+      const byMaterialLink = materialLinkMode === "all" || hasMaterialDataset;
+
+      return byCategory && byCountry && byQuery && byMaterialLink;
     });
-  }, [category, country, countryRole, query]);
+  }, [category, country, countryRole, materialLinkMode, query]);
 
   const sortedFlows = useMemo(() => {
     const items = [...filtered];
@@ -104,13 +117,27 @@ export default function TradeExplorer() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, category, country, countryRole, sortMode, viewMode, pageSize]);
+  }, [query, category, country, countryRole, materialLinkMode, sortMode, viewMode, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(sortedFlows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageStart = sortedFlows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const pageEnd = Math.min(currentPage * pageSize, sortedFlows.length);
   const pagedFlows = sortedFlows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const materialLinkedFlowCount = useMemo(() => {
+    return filtered.filter((flow) => {
+      return rawMaterials.some((material) => {
+        const materialName = material.name.toLowerCase();
+        const normalizedFlowProduct = flow.product.toLowerCase();
+
+        return (
+          normalizedFlowProduct.includes(materialName) ||
+          materialName.includes(normalizedFlowProduct)
+        );
+      });
+    }).length;
+  }, [filtered]);
 
   const topImporters = useMemo(() => {
     const counts = new Map<string, number>();
@@ -386,6 +413,17 @@ export default function TradeExplorer() {
               <option value="exporter">Exporter only</option>
             </select>
           </label>
+
+          <label>
+            Material dataset link
+            <select
+              value={materialLinkMode}
+              onChange={(e) => setMaterialLinkMode(e.target.value as MaterialLinkMode)}
+            >
+              <option value="all">All routes</option>
+              <option value="linked">Only routes linked to materials</option>
+            </select>
+          </label>
         </div>
 
         {country === "All countries" && countryRole !== "any" ? (
@@ -403,6 +441,7 @@ export default function TradeExplorer() {
               setCategory("All");
               setCountry("All countries");
               setCountryRole("any");
+              setMaterialLinkMode("all");
               setSortMode("relevance");
               setPageSize(6);
               setPage(1);
@@ -443,6 +482,15 @@ export default function TradeExplorer() {
                 Role: {countryRole} ×
               </button>
             ) : null}
+            {materialLinkMode !== "all" ? (
+              <button
+                type="button"
+                className="activeFilterChip"
+                onClick={() => setMaterialLinkMode("all")}
+              >
+                Material links only ×
+              </button>
+            ) : null}
             {sortMode !== "relevance" ? (
               <button
                 type="button"
@@ -456,6 +504,7 @@ export default function TradeExplorer() {
             category === "All" &&
             country === "All countries" &&
             countryRole === "any" &&
+            materialLinkMode === "all" &&
             sortMode === "relevance" ? (
               <span className="sectionIntro">None</span>
             ) : null}
@@ -469,6 +518,10 @@ export default function TradeExplorer() {
       >
         <StatGrid>
           <StatCard label="Matching flows" value={String(filtered.length)} />
+          <StatCard
+            label="Routes linked to material datasets"
+            value={String(materialLinkedFlowCount)}
+          />
           <StatCard
             label="Categories in view"
             value={String(new Set(filtered.map((f) => f.category)).size)}
