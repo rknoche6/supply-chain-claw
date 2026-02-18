@@ -433,6 +433,51 @@ export default function TradeExplorer() {
     mapSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const focusLaneWorkflow = ({
+    exporter,
+    importer,
+    mode,
+  }: {
+    exporter: string;
+    importer: string;
+    mode: "optimize" | "verify" | "expand";
+  }) => {
+    setCountry(importer);
+    setCountryRole("importer");
+    setSortMode("relevance");
+    setViewMode("cards");
+    setPage(1);
+
+    if (mode === "optimize") {
+      setMaterialLinkMode("linked");
+      setLaneCoverageFilter("full");
+    }
+
+    if (mode === "verify") {
+      setMaterialLinkMode("linked");
+      setLaneCoverageFilter("partial");
+    }
+
+    if (mode === "expand") {
+      setMaterialLinkMode("unlinked");
+      setLaneCoverageFilter("gap");
+    }
+
+    const matchingRoute = mappedRoutes.find(
+      (route) => route.topExporter === exporter && route.topImporter === importer
+    );
+
+    if (matchingRoute) {
+      setSelectedRouteId(matchingRoute.id);
+      setQuery(matchingRoute.product);
+    } else {
+      setQuery("");
+    }
+
+    const mapSection = document.getElementById("filtered-route-map");
+    mapSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const primaryExchangeLanes = useMemo(() => {
     const laneCounts = new Map<
       string,
@@ -1340,6 +1385,7 @@ export default function TradeExplorer() {
                   <th>Sample products</th>
                   <th>Unlinked products</th>
                   <th>Linked materials</th>
+                  <th>Workflow quick action</th>
                   <th>Drilldowns</th>
                 </tr>
               </thead>
@@ -1384,6 +1430,51 @@ export default function TradeExplorer() {
                             </span>
                           ))
                         : "No direct material match"}
+                    </td>
+                    <td>
+                      {lane.materialCoverageShare >= 100 ? (
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() =>
+                            focusLaneWorkflow({
+                              exporter: lane.exporter,
+                              importer: lane.importer,
+                              mode: "optimize",
+                            })
+                          }
+                        >
+                          Optimize lane now
+                        </button>
+                      ) : lane.materialCoverageShare > 0 ? (
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() =>
+                            focusLaneWorkflow({
+                              exporter: lane.exporter,
+                              importer: lane.importer,
+                              mode: "verify",
+                            })
+                          }
+                        >
+                          Verify missing links
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() =>
+                            focusLaneWorkflow({
+                              exporter: lane.exporter,
+                              importer: lane.importer,
+                              mode: "expand",
+                            })
+                          }
+                        >
+                          Expand material data
+                        </button>
+                      )}
                     </td>
                     <td>
                       <button
@@ -1530,14 +1621,23 @@ export default function TradeExplorer() {
                         type="button"
                         className="secondaryButton"
                         onClick={() =>
-                          focusLaneOnMap({
+                          focusLaneWorkflow({
                             exporter: lane.exporter,
                             importer: lane.importer,
-                            linkedOnly: true,
+                            mode:
+                              lane.materialCoverageShare >= 100
+                                ? "optimize"
+                                : lane.materialCoverageShare > 0
+                                  ? "verify"
+                                  : "expand",
                           })
                         }
                       >
-                        Focus importer lane
+                        {lane.materialCoverageShare >= 100
+                          ? "Optimize lane now"
+                          : lane.materialCoverageShare > 0
+                            ? "Verify missing links"
+                            : "Expand material data"}
                       </button>
                     </td>
                   </tr>
