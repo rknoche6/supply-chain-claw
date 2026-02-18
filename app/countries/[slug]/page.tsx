@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../../components";
 import { getCountryBySlug, getCountryProfiles } from "../../../lib/countries";
+import { tradeFlows } from "../../../lib/trade-data";
 
 type CountryPageProps = {
   params: {
@@ -194,6 +195,56 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
         entry.recordCount > 0 ? (entry.highConfidenceCount / entry.recordCount) * 100 : 0,
     }))
     .sort((a, b) => b.recordCount - a.recordCount || a.category.localeCompare(b.category));
+
+  const partnerRouteCoverage = tradeFlows
+    .flatMap((flow) => {
+      const isImporter = flow.topImporters.includes(country.name);
+      const isExporter = flow.topExporters.includes(country.name);
+
+      const rows = [] as {
+        partnerName: string;
+        role: "Importer" | "Exporter";
+        product: string;
+        category: string;
+        route: string;
+      }[];
+
+      if (isImporter) {
+        flow.topExporters
+          .filter((partnerName) => partnerName !== country.name)
+          .forEach((partnerName) => {
+            rows.push({
+              partnerName,
+              role: "Importer",
+              product: flow.product,
+              category: flow.category,
+              route: flow.keyRoute,
+            });
+          });
+      }
+
+      if (isExporter) {
+        flow.topImporters
+          .filter((partnerName) => partnerName !== country.name)
+          .forEach((partnerName) => {
+            rows.push({
+              partnerName,
+              role: "Exporter",
+              product: flow.product,
+              category: flow.category,
+              route: flow.keyRoute,
+            });
+          });
+      }
+
+      return rows;
+    })
+    .sort(
+      (a, b) =>
+        a.partnerName.localeCompare(b.partnerName) ||
+        a.role.localeCompare(b.role) ||
+        a.product.localeCompare(b.product)
+    );
 
   return (
     <Container>
@@ -549,6 +600,52 @@ export default function CountryDetailPage({ params }: CountryPageProps) {
           </div>
         ) : (
           <p className="sectionIntro">No material category coverage rows yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Partner corridor evidence"
+        subtitle="Product-level route rows showing which partners appear with this country as importer or exporter."
+      >
+        {partnerRouteCoverage.length > 0 ? (
+          <div className="tableWrap">
+            <table className="flowTable">
+              <thead>
+                <tr>
+                  <th>Partner country</th>
+                  <th>This country role</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Route</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partnerRouteCoverage.map((row) => {
+                  const partnerSlug = partnerSlugByName.get(row.partnerName);
+
+                  return (
+                    <tr
+                      key={`${country.slug}-${row.partnerName}-${row.role}-${row.product}-${row.route}`}
+                    >
+                      <td>
+                        {partnerSlug ? (
+                          <Link href={`/countries/${partnerSlug}`}>{row.partnerName}</Link>
+                        ) : (
+                          row.partnerName
+                        )}
+                      </td>
+                      <td>{row.role}</td>
+                      <td>{row.product}</td>
+                      <td>{row.category}</td>
+                      <td>{row.route}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="sectionIntro">No partner corridor rows available for this country yet.</p>
         )}
       </Card>
 
