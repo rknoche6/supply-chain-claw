@@ -557,19 +557,41 @@ export default function TradeExplorer() {
     }
 
     return Array.from(laneCounts.values())
-      .map((lane) => ({
-        ...lane,
-        categories: Array.from(lane.categories).sort((a, b) => a.localeCompare(b)),
-        products: Array.from(new Set(lane.products)).sort((a, b) => a.localeCompare(b)),
-        unmatchedProducts: Array.from(lane.unmatchedProducts).sort((a, b) => a.localeCompare(b)),
-        linkedMaterialRecords: Array.from(lane.linkedMaterials)
-          .map((slug) => rawMaterials.find((material) => material.slug === slug) ?? null)
-          .filter((material): material is (typeof rawMaterials)[number] => material !== null)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-        laneShare: filtered.length > 0 ? (lane.flowCount / filtered.length) * 100 : 0,
-        materialCoverageShare:
-          lane.flowCount > 0 ? (lane.matchedFlowCount / lane.flowCount) * 100 : 0,
-      }))
+      .map((lane) => {
+        const materialCoverageShare =
+          lane.flowCount > 0 ? (lane.matchedFlowCount / lane.flowCount) * 100 : 0;
+        const exactShare = lane.flowCount > 0 ? (lane.exactMatchCount / lane.flowCount) * 100 : 0;
+
+        const exchangeClarityTier =
+          materialCoverageShare >= 100 && lane.noMatchCount === 0
+            ? "Clear"
+            : materialCoverageShare >= 60
+              ? "Watch"
+              : "Gap";
+
+        const recommendedNextStep =
+          exchangeClarityTier === "Clear"
+            ? "Optimize route decisions"
+            : exchangeClarityTier === "Watch"
+              ? "Verify partial evidence"
+              : "Expand material evidence";
+
+        return {
+          ...lane,
+          categories: Array.from(lane.categories).sort((a, b) => a.localeCompare(b)),
+          products: Array.from(new Set(lane.products)).sort((a, b) => a.localeCompare(b)),
+          unmatchedProducts: Array.from(lane.unmatchedProducts).sort((a, b) => a.localeCompare(b)),
+          linkedMaterialRecords: Array.from(lane.linkedMaterials)
+            .map((slug) => rawMaterials.find((material) => material.slug === slug) ?? null)
+            .filter((material): material is (typeof rawMaterials)[number] => material !== null)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          laneShare: filtered.length > 0 ? (lane.flowCount / filtered.length) * 100 : 0,
+          materialCoverageShare,
+          exactShare,
+          exchangeClarityTier,
+          recommendedNextStep,
+        };
+      })
       .sort((a, b) => b.flowCount - a.flowCount || a.exporter.localeCompare(b.exporter))
       .slice(0, 10);
   }, [countrySlugSet, filtered]);
@@ -1310,6 +1332,11 @@ export default function TradeExplorer() {
                           )}
                         </li>
                         <li>
+                          Exchange clarity band:{" "}
+                          <strong>{selectedRouteLaneCoverage.exchangeClarityTier}</strong> (exact
+                          signal {selectedRouteLaneCoverage.exactShare.toFixed(0)}%)
+                        </li>
+                        <li>
                           Evidence mix in this lane:{" "}
                           <strong>{selectedRouteLaneCoverage.exactMatchCount}</strong> exact ·{" "}
                           <strong>{selectedRouteLaneCoverage.partialMatchCount}</strong> partial ·{" "}
@@ -1354,11 +1381,7 @@ export default function TradeExplorer() {
                       ) : null}
                       <p className="sectionIntro">
                         Next best action:{" "}
-                        {selectedRouteLaneCoverage.materialCoverageShare >= 100
-                          ? "optimize route decisions first (material evidence is complete)."
-                          : selectedRouteLaneCoverage.materialCoverageShare > 0
-                            ? "validate missing material links before committing lane-level decisions."
-                            : "prioritize dataset expansion for this lane before route optimization."}
+                        {selectedRouteLaneCoverage.recommendedNextStep.toLowerCase()}.
                       </p>
                     </>
                   ) : null}
@@ -1517,6 +1540,7 @@ export default function TradeExplorer() {
                     <th>Matched flows</th>
                     <th>Flow share</th>
                     <th>Material coverage</th>
+                    <th>Exchange clarity</th>
                     <th>Evidence quality mix</th>
                     <th>Categories</th>
                     <th>Sample products</th>
@@ -1548,6 +1572,12 @@ export default function TradeExplorer() {
                       <td>
                         {lane.matchedFlowCount} / {lane.flowCount} (
                         {lane.materialCoverageShare.toFixed(0)}%)
+                      </td>
+                      <td>
+                        <strong>{lane.exchangeClarityTier}</strong> · exact signal{" "}
+                        {lane.exactShare.toFixed(0)}%
+                        <br />
+                        <span className="sectionIntro">{lane.recommendedNextStep}</span>
                       </td>
                       <td>
                         Exact: {lane.exactMatchCount} · Partial: {lane.partialMatchCount} · Gap:{" "}
