@@ -127,6 +127,7 @@ export default function ComparePage() {
   const [matchedYearOnly, setMatchedYearOnly] = useState(false);
   const [comparableOnly, setComparableOnly] = useState(false);
   const [sameCitationOnly, setSameCitationOnly] = useState(false);
+  const [currentRecentOnly, setCurrentRecentOnly] = useState(false);
   const [sharedMaterialQuery, setSharedMaterialQuery] = useState("");
   const [sharedMaterialSort, setSharedMaterialSort] = useState<SharedMaterialSort>("material");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
@@ -271,11 +272,21 @@ export default function ComparePage() {
       ? comparableRows.filter((row) => row.sameSourceCitation)
       : comparableRows;
 
+    const freshnessScopedRows = currentRecentOnly
+      ? citationScopedRows.filter((row) => {
+          const leftFresh = row.leftRecord.freshness;
+          const rightFresh = row.rightRecord.freshness;
+          const leftInScope = leftFresh === "Current" || leftFresh === "Recent";
+          const rightInScope = rightFresh === "Current" || rightFresh === "Recent";
+          return leftInScope && rightInScope;
+        })
+      : citationScopedRows;
+
     const query = sharedMaterialQuery.trim().toLowerCase();
 
     const searchedRows = query
-      ? citationScopedRows.filter((row) => row.materialName.toLowerCase().includes(query))
-      : citationScopedRows;
+      ? freshnessScopedRows.filter((row) => row.materialName.toLowerCase().includes(query))
+      : freshnessScopedRows;
 
     const sharedMaterialRows = [...searchedRows].sort((a, b) => {
       if (sharedMaterialSort === "delta-desc") {
@@ -337,6 +348,13 @@ export default function ComparePage() {
       sameSourceSharedCount: allSharedMaterialRows.filter((row) => row.sameSourceCitation).length,
       allSharedMaterialCount: allSharedMaterialRows.length,
       matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
+      currentRecentSharedCount: allSharedMaterialRows.filter((row) => {
+        const leftFresh = row.leftRecord.freshness;
+        const rightFresh = row.rightRecord.freshness;
+        const leftInScope = leftFresh === "Current" || leftFresh === "Recent";
+        const rightInScope = rightFresh === "Current" || rightFresh === "Recent";
+        return leftInScope && rightInScope;
+      }).length,
       searchMatchedCount: searchedRows.length,
     };
   }, [
@@ -345,6 +363,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     sameCitationOnly,
+    currentRecentOnly,
     rightCountry,
     sharedMaterialQuery,
     sharedMaterialSort,
@@ -373,6 +392,7 @@ export default function ComparePage() {
     setMatchedYearOnly(pickBooleanFromQuery(params.get("matchedYearOnly"), false));
     setComparableOnly(pickBooleanFromQuery(params.get("comparableOnly"), false));
     setSameCitationOnly(pickBooleanFromQuery(params.get("sameCitationOnly"), false));
+    setCurrentRecentOnly(pickBooleanFromQuery(params.get("currentRecentOnly"), false));
     setSharedMaterialSort(pickSharedMaterialSort(params.get("sharedMaterialSort")));
     setSharedMaterialQuery(pickTextFromQuery(params.get("sharedMaterialQuery"), ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -413,6 +433,12 @@ export default function ComparePage() {
       params.delete("sameCitationOnly");
     }
 
+    if (currentRecentOnly) {
+      params.set("currentRecentOnly", "1");
+    } else {
+      params.delete("currentRecentOnly");
+    }
+
     if (sharedMaterialSort !== "material") {
       params.set("sharedMaterialSort", sharedMaterialSort);
     } else {
@@ -436,6 +462,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     sameCitationOnly,
+    currentRecentOnly,
     sharedMaterialSort,
     sharedMaterialQuery,
   ]);
@@ -464,6 +491,10 @@ export default function ComparePage() {
       params.set("sameCitationOnly", "1");
     }
 
+    if (currentRecentOnly) {
+      params.set("currentRecentOnly", "1");
+    }
+
     if (sharedMaterialSort !== "material") {
       params.set("sharedMaterialSort", sharedMaterialSort);
     }
@@ -482,6 +513,7 @@ export default function ComparePage() {
     matchedYearOnly,
     comparableOnly,
     sameCitationOnly,
+    currentRecentOnly,
     sharedMaterialSort,
     sharedMaterialQuery,
   ]);
@@ -709,6 +741,15 @@ export default function ComparePage() {
               >
                 {sameCitationOnly ? "Showing same-citation rows" : "Show same-citation rows only"}
               </button>
+              <button
+                type="button"
+                className={`secondaryButton ${currentRecentOnly ? "isActive" : ""}`}
+                onClick={() => setCurrentRecentOnly((prev) => !prev)}
+              >
+                {currentRecentOnly
+                  ? "Showing Current/Recent rows"
+                  : "Show Current/Recent freshness only"}
+              </button>
               <label>
                 Row sort
                 <select
@@ -785,11 +826,13 @@ export default function ComparePage() {
                     ? `Search matches ${countryMaterialComparison.searchMatchedCount}/${countryMaterialComparison.allSharedMaterialCount}`
                     : sameCitationOnly
                       ? `Same-citation view (${countryMaterialComparison.sameSourceSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                      : comparableOnly
-                        ? `Directly comparable view (${countryMaterialComparison.comparableSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                        : matchedYearOnly
-                          ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
-                          : "Materials with records in both selected countries"
+                      : currentRecentOnly
+                        ? `Current/Recent freshness view (${countryMaterialComparison.currentRecentSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                        : comparableOnly
+                          ? `Directly comparable view (${countryMaterialComparison.comparableSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                          : matchedYearOnly
+                            ? `Matched-year view (${countryMaterialComparison.matchedYearSharedCount}/${countryMaterialComparison.allSharedMaterialCount})`
+                            : "Materials with records in both selected countries"
                 }
               />
             </StatGrid>
@@ -864,11 +907,13 @@ export default function ComparePage() {
               <p className="sectionIntro">
                 {sameCitationOnly
                   ? `No same-citation shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
-                  : comparableOnly
-                    ? `No directly comparable shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
-                    : matchedYearOnly
-                      ? `No matched-year shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
-                      : `No shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`}
+                  : currentRecentOnly
+                    ? `No shared material records with Current/Recent freshness in both countries yet between ${leftCountry.name} and ${rightCountry.name}.`
+                    : comparableOnly
+                      ? `No directly comparable shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
+                      : matchedYearOnly
+                        ? `No matched-year shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`
+                        : `No shared material records yet between ${leftCountry.name} and ${rightCountry.name}.`}
               </p>
             )}
           </>
