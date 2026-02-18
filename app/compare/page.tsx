@@ -84,6 +84,7 @@ export default function ComparePage() {
 
   const [leftMaterialSlug, setLeftMaterialSlug] = useState(defaultLeftMaterial);
   const [rightMaterialSlug, setRightMaterialSlug] = useState(defaultRightMaterial);
+  const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const leftCountry = useMemo(
@@ -161,6 +162,13 @@ export default function ComparePage() {
       return null;
     }
 
+    const leftScopedRecords = highConfidenceOnly
+      ? leftCountry.materialRecords.filter((record) => record.confidence === "High")
+      : leftCountry.materialRecords;
+    const rightScopedRecords = highConfidenceOnly
+      ? rightCountry.materialRecords.filter((record) => record.confidence === "High")
+      : rightCountry.materialRecords;
+
     const leftHighConfidence = leftCountry.materialRecords.filter(
       (record) => record.confidence === "High"
     ).length;
@@ -168,11 +176,15 @@ export default function ComparePage() {
       (record) => record.confidence === "High"
     ).length;
 
-    const leftLatestYear = Math.max(...leftCountry.materialRecords.map((record) => record.year));
-    const rightLatestYear = Math.max(...rightCountry.materialRecords.map((record) => record.year));
+    const leftLatestYear = leftScopedRecords.length
+      ? Math.max(...leftScopedRecords.map((record) => record.year))
+      : null;
+    const rightLatestYear = rightScopedRecords.length
+      ? Math.max(...rightScopedRecords.map((record) => record.year))
+      : null;
 
-    const leftLatestByMaterial = getLatestRecordByMaterial(leftCountry.materialRecords);
-    const rightLatestByMaterial = getLatestRecordByMaterial(rightCountry.materialRecords);
+    const leftLatestByMaterial = getLatestRecordByMaterial(leftScopedRecords);
+    const rightLatestByMaterial = getLatestRecordByMaterial(rightScopedRecords);
 
     const sharedMaterialRows = Array.from(leftLatestByMaterial.entries())
       .filter(([materialSlug]) => rightLatestByMaterial.has(materialSlug))
@@ -197,16 +209,15 @@ export default function ComparePage() {
       rightHighConfidence,
       leftLatestYear,
       rightLatestYear,
-      leftSourceCount: new Set(leftCountry.materialRecords.map((record) => record.sourceUrl)).size,
-      rightSourceCount: new Set(rightCountry.materialRecords.map((record) => record.sourceUrl))
-        .size,
-      leftMaterialCount: new Set(leftCountry.materialRecords.map((record) => record.materialSlug))
-        .size,
-      rightMaterialCount: new Set(rightCountry.materialRecords.map((record) => record.materialSlug))
-        .size,
+      leftSourceCount: new Set(leftScopedRecords.map((record) => record.sourceUrl)).size,
+      rightSourceCount: new Set(rightScopedRecords.map((record) => record.sourceUrl)).size,
+      leftMaterialCount: new Set(leftScopedRecords.map((record) => record.materialSlug)).size,
+      rightMaterialCount: new Set(rightScopedRecords.map((record) => record.materialSlug)).size,
+      leftScopedRecordCount: leftScopedRecords.length,
+      rightScopedRecordCount: rightScopedRecords.length,
       sharedMaterialRows,
     };
-  }, [leftCountry, rightCountry]);
+  }, [highConfidenceOnly, leftCountry, rightCountry]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -446,21 +457,36 @@ export default function ComparePage() {
               description="Latest exact values by material, with unit/year/source checks for direct comparability."
             />
 
+            <div className="filterActions">
+              <button
+                type="button"
+                className={`secondaryButton ${highConfidenceOnly ? "isActive" : ""}`}
+                onClick={() => setHighConfidenceOnly((prev) => !prev)}
+              >
+                {highConfidenceOnly ? "Showing High-confidence only" : "Show High-confidence only"}
+              </button>
+            </div>
+
             <StatGrid>
               <StatCard
                 label={`${leftCountry.name} materials`}
                 value={String(countryMaterialComparison.leftMaterialCount)}
-                hint={`Latest year ${countryMaterialComparison.leftLatestYear}`}
+                hint={`Latest year ${countryMaterialComparison.leftLatestYear ?? "—"}`}
               />
               <StatCard
                 label={`${rightCountry.name} materials`}
                 value={String(countryMaterialComparison.rightMaterialCount)}
-                hint={`Latest year ${countryMaterialComparison.rightLatestYear}`}
+                hint={`Latest year ${countryMaterialComparison.rightLatestYear ?? "—"}`}
               />
               <StatCard
                 label="High-confidence records"
                 value={`${countryMaterialComparison.leftHighConfidence}/${leftCountry.materialRecords.length} vs ${countryMaterialComparison.rightHighConfidence}/${rightCountry.materialRecords.length}`}
                 hint={`${leftCountry.name} vs ${rightCountry.name}`}
+              />
+              <StatCard
+                label="Records in current confidence scope"
+                value={`${countryMaterialComparison.leftScopedRecordCount} vs ${countryMaterialComparison.rightScopedRecordCount}`}
+                hint={highConfidenceOnly ? "High-confidence scope" : "All confidence levels"}
               />
               <StatCard
                 label="Distinct source links"
