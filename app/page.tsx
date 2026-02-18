@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Container, Pill } from "./components";
 import RawMaterialsExplorer from "./raw-materials-explorer";
 import TradeExplorer from "./trade-explorer";
+import ExplorerLaunchpad from "./explorer-launchpad";
 import { getCountryProfiles } from "../lib/countries";
 import { rawMaterials } from "../lib/raw-materials";
 
@@ -67,6 +68,7 @@ export default function HomePage() {
         </div>
       </Card>
 
+      <ExplorerLaunchpad />
       <RawMaterialsExplorer />
       <TradeExplorer />
     </Container>
