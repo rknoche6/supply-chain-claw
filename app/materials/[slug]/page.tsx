@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../../components";
+import { getCountryProfiles, toCountrySlug } from "../../../lib/countries";
 import {
   getDataPointConfidence,
   getFreshnessLabel,
@@ -27,12 +28,25 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
 
   const sortedPoints = [...material.dataPoints].sort((a, b) => b.value - a.value);
   const topPoint = sortedPoints[0];
+  const totalValue = sortedPoints.reduce((sum, point) => sum + point.value, 0);
+  const topThreeValue = sortedPoints.slice(0, 3).reduce((sum, point) => sum + point.value, 0);
+  const topThreeShare = totalValue > 0 ? (topThreeValue / totalValue) * 100 : 0;
+  const hhi =
+    totalValue > 0
+      ? sortedPoints.reduce((sum, point) => {
+          const share = point.value / totalValue;
+          return sum + share * share * 10000;
+        }, 0)
+      : 0;
+  const concentrationBand = hhi >= 2500 ? "High" : hhi >= 1500 ? "Moderate" : "Low";
+
   const availableYears = Array.from(new Set(material.dataPoints.map((point) => point.year))).sort(
     (a, b) => b - a
   );
   const highConfidenceCount = material.dataPoints.filter(
     (point) => getDataPointConfidence(point) === "High"
   ).length;
+  const countrySlugSet = new Set(getCountryProfiles().map((country) => country.slug));
   const currentOrRecentCount = material.dataPoints.filter((point) => {
     const freshness = getFreshnessLabel(point.year, material.updatedAt);
     return freshness === "Current" || freshness === "Recent";
@@ -74,9 +88,16 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
             <p className="statHint">Year {topPoint.year}</p>
           </article>
           <article className="statCard">
-            <p className="statLabel">Trend status</p>
-            <p className="statValue">Single-year snapshot</p>
-            <p className="statHint">Add multi-year points to unlock trend lines.</p>
+            <p className="statLabel">Top 3 producer share</p>
+            <p className="statValue">{topThreeShare.toFixed(1)}%</p>
+            <p className="statHint">Share of captured value held by the top three countries.</p>
+          </article>
+          <article className="statCard">
+            <p className="statLabel">Concentration (HHI)</p>
+            <p className="statValue">
+              {Math.round(hhi).toLocaleString()} · {concentrationBand}
+            </p>
+            <p className="statHint">Higher values indicate tighter producer concentration.</p>
           </article>
         </div>
       </Card>
@@ -102,10 +123,18 @@ export default function MaterialDetailPage({ params }: MaterialPageProps) {
               {sortedPoints.map((point) => {
                 const freshness = getFreshnessLabel(point.year, material.updatedAt);
                 const confidence = getDataPointConfidence(point);
+                const countrySlug = toCountrySlug(point.country);
+                const hasCountryPage = countrySlugSet.has(countrySlug);
 
                 return (
                   <tr key={`${material.slug}-${point.country}-${point.metric}-${point.year}`}>
-                    <td>{point.country}</td>
+                    <td>
+                      {hasCountryPage ? (
+                        <Link href={`/countries/${countrySlug}`}>{point.country}</Link>
+                      ) : (
+                        point.country
+                      )}
+                    </td>
                     <td>{point.metric}</td>
                     <td>
                       {point.value.toLocaleString()} {point.unit}
