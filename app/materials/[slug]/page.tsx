@@ -114,6 +114,43 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
     (point) => getDataPointConfidence(point) === "High"
   ).length;
   const countrySlugSet = new Set(getCountryProfiles().map((country) => country.slug));
+  const topProducerCompareLinks = sortedPoints
+    .slice(1, 4)
+    .map((point) => {
+      const leftSlug = toCountrySlug(topPoint.country);
+      const rightSlug = toCountrySlug(point.country);
+      const hasCountryCompare = countrySlugSet.has(leftSlug) && countrySlugSet.has(rightSlug);
+
+      if (!hasCountryCompare || leftSlug === rightSlug) {
+        return null;
+      }
+
+      const compareParams = new URLSearchParams({
+        leftCountry: leftSlug,
+        rightCountry: rightSlug,
+        leftMaterial: material.slug,
+        rightMaterial: material.slug,
+      });
+
+      return {
+        country: point.country,
+        value: point.value,
+        unit: point.unit,
+        year: point.year,
+        href: `/compare?${compareParams.toString()}`,
+      };
+    })
+    .filter(
+      (
+        link
+      ): link is {
+        country: string;
+        value: number;
+        unit: string;
+        year: number;
+        href: string;
+      } => link !== null
+    );
   const currentOrRecentCount = material.dataPoints.filter((point) => {
     const freshness = getFreshnessLabel(point.year, material.updatedAt);
     return freshness === "Current" || freshness === "Recent";
@@ -264,6 +301,33 @@ export default function MaterialDetailPage({ params, searchParams }: MaterialPag
             <p className="statValue">{filteredPoints.length}</p>
             <p className="statHint">Current table scope after year/confidence/country filters.</p>
           </article>
+        </div>
+
+        <div style={{ marginTop: "0.85rem" }}>
+          <p className="statLabel">Top producer compare shortcuts</p>
+          {topProducerCompareLinks.length > 0 ? (
+            <div className="linkChipList">
+              {topProducerCompareLinks.map((link) => (
+                <Link
+                  key={`${material.slug}-top-producer-${link.country}`}
+                  href={link.href}
+                  className="linkChip"
+                >
+                  <span>
+                    {topPoint.country} vs {link.country}
+                  </span>
+                  <span>
+                    {link.value.toLocaleString()} {link.unit} · {link.year}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="sectionIntro">
+              Country compare shortcuts become available when both top producer countries have
+              mapped country pages.
+            </p>
+          )}
         </div>
       </Card>
 
