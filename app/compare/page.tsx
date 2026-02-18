@@ -6,6 +6,8 @@ import { Card, Container, Pill, SectionHeader, StatCard, StatGrid } from "../com
 import { getCountryProfiles, type CountryMaterialRecord } from "../../lib/countries";
 import { getDataPointConfidence, getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
+type SharedMaterialSort = "material" | "delta-desc" | "delta-asc" | "left-value" | "right-value";
+
 const countries = getCountryProfiles();
 
 function pickSlugFromQuery(
@@ -26,6 +28,18 @@ function pickBooleanFromQuery(candidate: string | null, fallback: boolean): bool
   }
 
   return candidate === "1" || candidate.toLowerCase() === "true";
+}
+
+function pickSharedMaterialSort(candidate: string | null): SharedMaterialSort {
+  switch (candidate) {
+    case "delta-desc":
+    case "delta-asc":
+    case "left-value":
+    case "right-value":
+      return candidate;
+    default:
+      return "material";
+  }
 }
 
 function getMaterialStats(slug: string) {
@@ -95,6 +109,7 @@ export default function ComparePage() {
   const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
   const [matchedYearOnly, setMatchedYearOnly] = useState(false);
   const [comparableOnly, setComparableOnly] = useState(false);
+  const [sharedMaterialSort, setSharedMaterialSort] = useState<SharedMaterialSort>("material");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const leftCountry = useMemo(
@@ -220,9 +235,37 @@ export default function ComparePage() {
       ? allSharedMaterialRows.filter((row) => row.yearMatched)
       : allSharedMaterialRows;
 
-    const sharedMaterialRows = comparableOnly
+    const filteredSharedRows = comparableOnly
       ? yearScopedRows.filter((row) => row.directlyComparable)
       : yearScopedRows;
+
+    const sharedMaterialRows = [...filteredSharedRows].sort((a, b) => {
+      if (sharedMaterialSort === "delta-desc") {
+        const left = a.delta ?? Number.NEGATIVE_INFINITY;
+        const right = b.delta ?? Number.NEGATIVE_INFINITY;
+        return right - left || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (sharedMaterialSort === "delta-asc") {
+        const left = a.delta ?? Number.POSITIVE_INFINITY;
+        const right = b.delta ?? Number.POSITIVE_INFINITY;
+        return left - right || a.materialName.localeCompare(b.materialName);
+      }
+
+      if (sharedMaterialSort === "left-value") {
+        return (
+          b.leftRecord.value - a.leftRecord.value || a.materialName.localeCompare(b.materialName)
+        );
+      }
+
+      if (sharedMaterialSort === "right-value") {
+        return (
+          b.rightRecord.value - a.rightRecord.value || a.materialName.localeCompare(b.materialName)
+        );
+      }
+
+      return a.materialName.localeCompare(b.materialName);
+    });
 
     const comparableSharedCount = allSharedMaterialRows.filter(
       (row) => row.directlyComparable
@@ -244,7 +287,14 @@ export default function ComparePage() {
       allSharedMaterialCount: allSharedMaterialRows.length,
       matchedYearSharedCount: allSharedMaterialRows.filter((row) => row.yearMatched).length,
     };
-  }, [highConfidenceOnly, leftCountry, matchedYearOnly, comparableOnly, rightCountry]);
+  }, [
+    highConfidenceOnly,
+    leftCountry,
+    matchedYearOnly,
+    comparableOnly,
+    rightCountry,
+    sharedMaterialSort,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -268,6 +318,7 @@ export default function ComparePage() {
     setHighConfidenceOnly(pickBooleanFromQuery(params.get("highConfidenceOnly"), false));
     setMatchedYearOnly(pickBooleanFromQuery(params.get("matchedYearOnly"), false));
     setComparableOnly(pickBooleanFromQuery(params.get("comparableOnly"), false));
+    setSharedMaterialSort(pickSharedMaterialSort(params.get("sharedMaterialSort")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -300,6 +351,12 @@ export default function ComparePage() {
       params.delete("comparableOnly");
     }
 
+    if (sharedMaterialSort !== "material") {
+      params.set("sharedMaterialSort", sharedMaterialSort);
+    } else {
+      params.delete("sharedMaterialSort");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", nextUrl);
   }, [
@@ -310,6 +367,7 @@ export default function ComparePage() {
     highConfidenceOnly,
     matchedYearOnly,
     comparableOnly,
+    sharedMaterialSort,
   ]);
 
   const compareParams = useMemo(() => {
@@ -332,6 +390,10 @@ export default function ComparePage() {
       params.set("comparableOnly", "1");
     }
 
+    if (sharedMaterialSort !== "material") {
+      params.set("sharedMaterialSort", sharedMaterialSort);
+    }
+
     return params;
   }, [
     leftCountrySlug,
@@ -341,6 +403,7 @@ export default function ComparePage() {
     highConfidenceOnly,
     matchedYearOnly,
     comparableOnly,
+    sharedMaterialSort,
   ]);
 
   const comparePath = `/compare?${compareParams.toString()}`;
@@ -559,6 +622,21 @@ export default function ComparePage() {
                   ? "Showing directly comparable rows"
                   : "Show directly comparable rows only"}
               </button>
+              <label>
+                Row sort
+                <select
+                  value={sharedMaterialSort}
+                  onChange={(event) =>
+                    setSharedMaterialSort(event.target.value as SharedMaterialSort)
+                  }
+                >
+                  <option value="material">Material A-Z</option>
+                  <option value="delta-desc">Largest positive delta</option>
+                  <option value="delta-asc">Largest negative delta</option>
+                  <option value="left-value">Highest left-country value</option>
+                  <option value="right-value">Highest right-country value</option>
+                </select>
+              </label>
             </div>
 
             <StatGrid>
