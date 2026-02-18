@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, Container, Pill, SectionHeader } from "../components";
-import { rawMaterials } from "../../lib/raw-materials";
+import { getFreshnessLabel, rawMaterials } from "../../lib/raw-materials";
 
 const confidenceScale = [
   {
@@ -41,8 +41,38 @@ function getUniqueSources() {
   );
 }
 
+function getFreshnessSummary() {
+  return rawMaterials
+    .map((material) => {
+      const years = material.dataPoints.map((point) => point.year);
+      const counts = material.dataPoints.reduce(
+        (acc, point) => {
+          const freshness = getFreshnessLabel(point.year, material.updatedAt);
+          acc.total += 1;
+
+          if (freshness === "Current" || freshness === "Recent" || freshness === "Stale") {
+            acc[freshness] += 1;
+          }
+
+          return acc;
+        },
+        { total: 0, Current: 0, Recent: 0, Stale: 0 }
+      );
+
+      return {
+        materialName: material.name,
+        materialSlug: material.slug,
+        latestYear: years.length > 0 ? Math.max(...years) : null,
+        oldestYear: years.length > 0 ? Math.min(...years) : null,
+        ...counts,
+      };
+    })
+    .sort((a, b) => a.materialName.localeCompare(b.materialName));
+}
+
 export default function MethodologyPage() {
   const sources = getUniqueSources();
+  const freshnessSummary = getFreshnessSummary();
   const latestUpdate = rawMaterials
     .map((item) => item.updatedAt)
     .sort((a, b) => b.localeCompare(a))[0];
@@ -83,6 +113,66 @@ export default function MethodologyPage() {
               <p>{level.definition}</p>
             </article>
           ))}
+        </div>
+      </Card>
+
+      <Card
+        title="Freshness rules"
+        subtitle="Records are labeled by age relative to each material dataset’s latest update year."
+      >
+        <ul>
+          <li>
+            <strong>Current:</strong> reference year is within 1 year of the material’s latest
+            update year.
+          </li>
+          <li>
+            <strong>Recent:</strong> reference year is 2-3 years behind the latest update year.
+          </li>
+          <li>
+            <strong>Stale:</strong> reference year is 4+ years behind and should be reviewed before
+            decision use.
+          </li>
+        </ul>
+      </Card>
+
+      <Card
+        title="Dataset freshness by material"
+        subtitle="Counts of Current/Recent/Stale rows, plus oldest and latest reference year by material."
+      >
+        <div className="tableWrap">
+          <table className="flowTable">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Total records</th>
+                <th>Current</th>
+                <th>Recent</th>
+                <th>Stale</th>
+                <th>Year span</th>
+              </tr>
+            </thead>
+            <tbody>
+              {freshnessSummary.map((row) => (
+                <tr key={row.materialSlug}>
+                  <td>
+                    <Link href={`/materials/${row.materialSlug}`}>{row.materialName}</Link>
+                  </td>
+                  <td>{row.total}</td>
+                  <td>{row.Current}</td>
+                  <td>{row.Recent}</td>
+                  <td>{row.Stale}</td>
+                  <td>
+                    {row.oldestYear ?? "—"}
+                    {row.oldestYear && row.latestYear && row.oldestYear !== row.latestYear
+                      ? ` → ${row.latestYear}`
+                      : row.latestYear
+                        ? ` (${row.latestYear})`
+                        : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
 
