@@ -962,7 +962,7 @@ export default function TradeExplorer() {
 
       <Card
         title="Lane decision queue"
-        subtitle="Prioritize exporter → importer lanes where map impact is high and material evidence is thin."
+        subtitle="Prioritize exporter → importer lanes where map impact is high and material evidence is thin, then jump directly into a focused route view."
       >
         {exchangeDecisionQueue.length > 0 ? (
           <div className="tableWrap">
@@ -975,6 +975,7 @@ export default function TradeExplorer() {
                   <th>Coverage gap</th>
                   <th>Priority score</th>
                   <th>Action bundle</th>
+                  <th>Focus workflow</th>
                 </tr>
               </thead>
               <tbody>
@@ -1002,6 +1003,23 @@ export default function TradeExplorer() {
                             </span>
                           ))
                         : "No linked materials yet"}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() => {
+                          setCountry(lane.importer);
+                          setCountryRole("importer");
+                          setMaterialLinkMode("linked");
+                          setQuery(lane.products[0] ?? "");
+                          setSortMode("relevance");
+                          setViewMode("cards");
+                          setPage(1);
+                        }}
+                      >
+                        Focus importer lane
+                      </button>
                     </td>
                   </tr>
                 ))}
