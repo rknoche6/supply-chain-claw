@@ -1168,6 +1168,126 @@ export default function TradeExplorer() {
         title="Filtered route map"
         subtitle="Tap a route to spotlight its exact path. Great for comparing corridors on mobile and desktop."
       >
+        {/* Material Exchange Clarity Summary Panel */}
+        <div className="claritySummaryPanel">
+          <div className="claritySummaryHeader">
+            <span className="claritySummaryTitle">Material exchange clarity</span>
+            <span className="claritySummaryMeta">
+              {exchangeCoverageSnapshot.fullCoverage +
+                exchangeCoverageSnapshot.partialCoverage +
+                exchangeCoverageSnapshot.noCoverage}{" "}
+              lanes analyzed
+            </span>
+          </div>
+
+          <div className="clarityMetricsGrid">
+            <div className="clarityMetric">
+              <span className="clarityMetricValue" style={{ color: "#4ade80" }}>
+                {exchangeCoverageSnapshot.fullCoverage}
+              </span>
+              <span className="clarityMetricLabel">Fully linked</span>
+              <span className="clarityMetricHint">Execution-ready lanes</span>
+            </div>
+            <div className="clarityMetric">
+              <span className="clarityMetricValue" style={{ color: "#fbbf24" }}>
+                {exchangeCoverageSnapshot.partialCoverage}
+              </span>
+              <span className="clarityMetricLabel">Partial match</span>
+              <span className="clarityMetricHint">Needs validation</span>
+            </div>
+            <div className="clarityMetric">
+              <span className="clarityMetricValue" style={{ color: "#f87171" }}>
+                {exchangeCoverageSnapshot.noCoverage}
+              </span>
+              <span className="clarityMetricLabel">Data gaps</span>
+              <span className="clarityMetricHint">Missing material links</span>
+            </div>
+          </div>
+
+          {exchangeCoverageSnapshot.laneCount > 0 && (
+            <div className="clarityBarContainer">
+              <div className="clarityBar">
+                <div
+                  className="clarityBarSegment clarityBarSegment--full"
+                  style={{ width: `${exchangeCoverageSnapshot.fullCoverageShare}%` }}
+                  title={`Full coverage: ${exchangeCoverageSnapshot.fullCoverage} lanes (${exchangeCoverageSnapshot.fullCoverageShare.toFixed(1)}%)`}
+                />
+                <div
+                  className="clarityBarSegment clarityBarSegment--partial"
+                  style={{
+                    width: `${(exchangeCoverageSnapshot.partialCoverage / exchangeCoverageSnapshot.laneCount) * 100}%`,
+                  }}
+                  title={`Partial coverage: ${exchangeCoverageSnapshot.partialCoverage} lanes (${((exchangeCoverageSnapshot.partialCoverage / exchangeCoverageSnapshot.laneCount) * 100).toFixed(1)}%)`}
+                />
+                <div
+                  className="clarityBarSegment clarityBarSegment--gap"
+                  style={{ width: `${exchangeCoverageSnapshot.noCoverageShare}%` }}
+                  title={`Coverage gaps: ${exchangeCoverageSnapshot.noCoverage} lanes (${exchangeCoverageSnapshot.noCoverageShare.toFixed(1)}%)`}
+                />
+              </div>
+              <div className="clarityBarLabels">
+                <span style={{ color: "#4ade80" }}>
+                  ● {exchangeCoverageSnapshot.fullCoverageShare.toFixed(0)}% execution-ready
+                </span>
+                <span style={{ color: "#fbbf24" }}>
+                  ●{" "}
+                  {(
+                    (exchangeCoverageSnapshot.partialCoverage /
+                      exchangeCoverageSnapshot.laneCount) *
+                    100
+                  ).toFixed(0)}
+                  % needs validation
+                </span>
+                <span style={{ color: "#f87171" }}>
+                  ● {exchangeCoverageSnapshot.noCoverageShare.toFixed(0)}% data gap
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="clarityActions">
+            <span className="clarityActionHint">Quick filters:</span>
+            <button
+              type="button"
+              className="clarityActionChip clarityActionChip--full"
+              onClick={() => {
+                setLaneCoverageFilter("full");
+                setMaterialLinkMode("linked");
+                setSortMode("relevance");
+                setViewMode("cards");
+                setPage(1);
+              }}
+            >
+              Show execution-ready ({exchangeCoverageSnapshot.fullCoverage})
+            </button>
+            <button
+              type="button"
+              className="clarityActionChip clarityActionChip--partial"
+              onClick={() => {
+                setLaneCoverageFilter("partial");
+                setMaterialLinkMode("linked");
+                setSortMode("relevance");
+                setViewMode("cards");
+                setPage(1);
+              }}
+            >
+              Show needs validation ({exchangeCoverageSnapshot.partialCoverage})
+            </button>
+            <button
+              type="button"
+              className="clarityActionChip clarityActionChip--gap"
+              onClick={() => {
+                setLaneCoverageFilter("gap");
+                setMaterialLinkMode("unlinked");
+                setSortMode("relevance");
+                setViewMode("cards");
+                setPage(1);
+              }}
+            >
+              Show gaps ({exchangeCoverageSnapshot.noCoverage})
+            </button>
+          </div>
+        </div>
         <span id="filtered-route-map" aria-hidden="true" />
         {mappedRoutes.length > 0 ? (
           <>
@@ -1631,16 +1751,108 @@ export default function TradeExplorer() {
                       <td>
                         {lane.matchedFlowCount} / {lane.flowCount} (
                         {lane.materialCoverageShare.toFixed(0)}%)
+                        {/* Coverage progress bar */}
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "6px",
+                            background: "#182744",
+                            borderRadius: "3px",
+                            marginTop: "6px",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${lane.materialCoverageShare}%`,
+                              height: "100%",
+                              background:
+                                lane.materialCoverageShare >= 100
+                                  ? "linear-gradient(90deg, #4ade80, #22c55e)"
+                                  : lane.materialCoverageShare >= 60
+                                    ? "linear-gradient(90deg, #fbbf24, #f59e0b)"
+                                    : "linear-gradient(90deg, #f87171, #ef4444)",
+                              borderRadius: "3px",
+                              transition: "width 0.3s ease",
+                            }}
+                          />
+                        </div>
                       </td>
                       <td>
-                        <strong>{lane.exchangeClarityTier}</strong> · exact signal{" "}
-                        {lane.exactShare.toFixed(0)}%
-                        <br />
-                        <span className="sectionIntro">{lane.recommendedNextStep}</span>
+                        {/* Visual clarity badge */}
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 10px",
+                            borderRadius: "999px",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            background:
+                              lane.exchangeClarityTier === "Clear"
+                                ? "rgba(74, 222, 128, 0.15)"
+                                : lane.exchangeClarityTier === "Watch"
+                                  ? "rgba(251, 191, 36, 0.15)"
+                                  : "rgba(248, 113, 113, 0.15)",
+                            border: `1px solid ${
+                              lane.exchangeClarityTier === "Clear"
+                                ? "rgba(74, 222, 128, 0.4)"
+                                : lane.exchangeClarityTier === "Watch"
+                                  ? "rgba(251, 191, 36, 0.4)"
+                                  : "rgba(248, 113, 113, 0.4)"
+                            }`,
+                            color:
+                              lane.exchangeClarityTier === "Clear"
+                                ? "#4ade80"
+                                : lane.exchangeClarityTier === "Watch"
+                                  ? "#fbbf24"
+                                  : "#f87171",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              background:
+                                lane.exchangeClarityTier === "Clear"
+                                  ? "#4ade80"
+                                  : lane.exchangeClarityTier === "Watch"
+                                    ? "#fbbf24"
+                                    : "#f87171",
+                            }}
+                          />
+                          {lane.exchangeClarityTier}
+                        </span>
+                        <div style={{ marginTop: "6px", fontSize: "0.8rem" }}>
+                          <strong>{lane.exactShare.toFixed(0)}%</strong> exact signal
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "0.75rem",
+                            color: "#c5d0f4",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {lane.recommendedNextStep}
+                        </div>
                       </td>
                       <td>
-                        Exact: {lane.exactMatchCount} · Partial: {lane.partialMatchCount} · Gap:{" "}
-                        {lane.noMatchCount}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          <span style={{ color: "#4ade80" }}>● {lane.exactMatchCount} exact</span>
+                          <span style={{ color: "#fbbf24" }}>
+                            ● {lane.partialMatchCount} partial
+                          </span>
+                          <span style={{ color: "#f87171" }}>● {lane.noMatchCount} gap</span>
+                        </div>
                       </td>
                       <td>{lane.categories.join(", ")}</td>
                       <td>{lane.products.slice(0, 3).join(", ")}</td>
@@ -1733,7 +1945,8 @@ export default function TradeExplorer() {
             <p className="sectionIntro">
               Evidence quality mix shows lane confidence at a glance: exact matches are strongest,
               partial matches need validation, and gaps mark products that still need material
-              linkage.
+              linkage. The clarity badge and coverage bar help you quickly identify which lanes are
+              execution-ready.
             </p>
           </>
         ) : (
