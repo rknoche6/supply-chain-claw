@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, Line, Marker } from "react-simple-maps";
 
 type MappedRoute = {
@@ -197,9 +197,84 @@ function FlowArrow({ from, to, color, size, opacity }: FlowArrowProps) {
   );
 }
 
+// Custom hook for keyboard navigation of route segments
+function useSegmentKeyboardNavigation(
+  segments: RouteSegment[],
+  onSegmentFocus: (segment: RouteSegment | null) => void,
+  emphasizedSegmentIds: Set<string>
+) {
+  const [, setFocusedIndex] = useState<number>(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Filter to only emphasized segments for keyboard navigation
+  const navigableSegments = useMemo(
+    () => segments.filter((s) => emphasizedSegmentIds.has(`${s.routeId}-${segments.indexOf(s)}`)),
+    [segments, emphasizedSegmentIds]
+  );
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (navigableSegments.length === 0) return;
+
+      switch (event.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+          event.preventDefault();
+          setFocusedIndex((prev) => {
+            const nextIndex = prev < navigableSegments.length - 1 ? prev + 1 : 0;
+            const segment = navigableSegments[nextIndex];
+            onSegmentFocus(segment);
+            return nextIndex;
+          });
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+          event.preventDefault();
+          setFocusedIndex((prev) => {
+            const nextIndex = prev > 0 ? prev - 1 : navigableSegments.length - 1;
+            const segment = navigableSegments[nextIndex];
+            onSegmentFocus(segment);
+            return nextIndex;
+          });
+          break;
+        case "Home":
+          event.preventDefault();
+          setFocusedIndex(0);
+          onSegmentFocus(navigableSegments[0]);
+          break;
+        case "End":
+          event.preventDefault();
+          setFocusedIndex(navigableSegments.length - 1);
+          onSegmentFocus(navigableSegments[navigableSegments.length - 1]);
+          break;
+        case "Escape":
+          event.preventDefault();
+          setFocusedIndex(-1);
+          onSegmentFocus(null);
+          containerRef.current?.focus();
+          break;
+      }
+    },
+    [navigableSegments, onSegmentFocus]
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener("keydown", handleKeyDown);
+    return () => container.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  return {
+    containerRef,
+  };
+}
+
 export default function RouteMap({ routes, selectedRouteId, selectedCountry }: RouteMapProps) {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [hoveredSegmentTooltip, setHoveredSegmentTooltip] = useState<RouteSegment | null>(null);
+  const [keyboardFocusedSegment, setKeyboardFocusedSegment] = useState<RouteSegment | null>(null);
 
   const normalizedRoutes = useMemo(
     () =>
@@ -322,6 +397,35 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
     };
   }, [segments, selectedCountry]);
 
+  // Build set of emphasized segment IDs for keyboard navigation
+  const emphasizedSegmentIds = useMemo(() => {
+    return new Set(
+      segments
+        .filter(
+          (segment) =>
+            segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true)
+        )
+        .map((_, index) => {
+          const segment = segments[index];
+          return `${segment.routeId}-${index}`;
+        })
+    );
+  }, [segments, selectedCountry]);
+
+  // Initialize keyboard navigation
+  const { containerRef } = useSegmentKeyboardNavigation(
+    segments,
+    setKeyboardFocusedSegment,
+    emphasizedSegmentIds
+  );
+
+  // Sync keyboard focus with hover/tooltip state
+  useEffect(() => {
+    if (keyboardFocusedSegment) {
+      setHoveredSegmentTooltip(keyboardFocusedSegment);
+    }
+  }, [keyboardFocusedSegment]);
+
   // Build detailed exchange pathway with port clarity data
   const selectedRouteExchangePathway = useMemo(() => {
     if (!selectedRoute || selectedRoute.stops.length < 2) {
@@ -428,9 +532,12 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
 
   return (
     <div
+      ref={containerRef}
       className="mapFrame mapFrame--enhanced"
-      role="img"
-      aria-label="Map of filtered supply routes with material color legend"
+      role="application"
+      aria-label="Interactive supply chain route map. Use arrow keys to navigate segments."
+      tabIndex={0}
+      style={{ outline: "none" }}
     >
       <ComposableMap projection="geoMercator" projectionConfig={{ scale: 135 }}>
         <Geographies geography={geoUrl}>
@@ -451,17 +558,25 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
 
         {segments.map((segment, index) => {
           const segmentId = `${segment.routeId}-${index}`;
-          const isActive = activeSegmentId === segmentId;
+          const isActive = activeSegmentId === segmentId || keyboardFocusedSegment === segment;
           const shouldEmphasize =
             segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true);
           const color = categoryColor[segment.category];
           const dashArray = segment.materialMatchQuality
             ? clarityDashArray[segment.materialMatchQuality]
             : "2,2";
+          const clarityLabel =
+            segment.materialMatchQuality === "exact"
+              ? "Exact material match"
+              : segment.materialMatchQuality === "partial"
+                ? "Partial material match"
+                : "No direct material match";
 
           return (
             <Line
               key={segmentId}
+              data-segment-id={segmentId}
+              data-navigable={shouldEmphasize}
               from={segment.from}
               to={segment.to}
               stroke={color}
@@ -478,6 +593,8 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
                 setHoveredSegmentTooltip(null);
               }}
               onClick={() => setActiveSegmentId(segmentId)}
+              aria-label={`${segment.product}: ${segment.fromName} to ${segment.toName}. ${clarityLabel}.`}
+              aria-hidden={!shouldEmphasize}
             />
           );
         })}
@@ -850,8 +967,9 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
       ) : null}
 
       <p className="sectionIntro">
-        Tap or hover a route segment for material + corridor details. Port markers show export
-        start, import end, and transit checkpoints.
+        Tap, hover, or use arrow keys to navigate route segments for material + corridor details.
+        Press Escape to clear focus. Port markers show export start, import end, and transit
+        checkpoints.
       </p>
 
       {activeSegment ? (
