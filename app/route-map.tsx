@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, Line, Marker } from "react-simple-maps";
 import { type RawMaterialItem } from "../lib/raw-materials";
+import { tradeFlows } from "../lib/trade-data";
 
 type MappedRoute = {
   id: string;
@@ -79,6 +80,62 @@ const portCoordinates: Record<string, [number, number]> = {
   Qatar: [51.53, 25.29],
   Yokohama: [139.64, 35.44],
 };
+
+// Port-to-country mapping for material flow analysis
+const portToCountry: Record<string, string> = {
+  Taipei: "Taiwan",
+  "Los Angeles": "United States",
+  Chicago: "United States",
+  Hsinchu: "Taiwan",
+  Singapore: "Singapore",
+  Rotterdam: "Netherlands",
+  Callao: "Peru",
+  Shanghai: "China",
+  Perth: "Australia",
+  Ningbo: "China",
+  Guayaquil: "Ecuador",
+  Novorossiysk: "Russia",
+  Alexandria: "Egypt",
+  Qatar: "Qatar",
+  Yokohama: "Japan",
+};
+
+// Determine material flow role for a port based on matched material
+function getPortMaterialFlowRole(
+  portName: string,
+  matchedMaterial: RawMaterialItem | null | undefined,
+  product: string
+): { role: "source" | "destination" | "neutral"; label: string; color: string } {
+  if (!matchedMaterial) {
+    return { role: "neutral", label: "No material link", color: "#94a3b8" };
+  }
+
+  const country = portToCountry[portName];
+  if (!country) {
+    return { role: "neutral", label: "Unknown location", color: "#94a3b8" };
+  }
+
+  // Check if country is a top producer of this material
+  const isProducer = matchedMaterial.dataPoints.some(
+    (point) => point.country === country && point.metric === "mine-production"
+  );
+
+  // For trade flow products, check importer/exporter lists
+  const tradeFlow = tradeFlows.find((flow) => flow.product.toLowerCase() === product.toLowerCase());
+
+  const isTopExporter = tradeFlow?.topExporters.includes(country) ?? false;
+  const isTopImporter = tradeFlow?.topImporters.includes(country) ?? false;
+
+  if (isProducer || isTopExporter) {
+    return { role: "source", label: "Material source (export)", color: "#4ade80" };
+  }
+
+  if (isTopImporter) {
+    return { role: "destination", label: "Material destination (import)", color: "#f87171" };
+  }
+
+  return { role: "neutral", label: "Transit/neutral", color: "#fbbf24" };
+}
 
 // Calculate midpoint between two coordinates
 function getMidpoint(from: [number, number], to: [number, number]): [number, number] {
@@ -200,7 +257,11 @@ function ExchangeClarityTooltip({
     ? [...matchedMaterial.dataPoints].sort((a, b) => b.value - a.value).slice(0, 3)
     : [];
 
-  const tooltipHeight = matchedMaterial ? 240 : 160;
+  // Calculate material flow direction indicators
+  const fromFlowRole = getPortMaterialFlowRole(segment.fromName, matchedMaterial, segment.product);
+  const toFlowRole = getPortMaterialFlowRole(segment.toName, matchedMaterial, segment.product);
+
+  const tooltipHeight = matchedMaterial ? 280 : 180;
 
   return (
     <g>
@@ -229,16 +290,30 @@ function ExchangeClarityTooltip({
       <text x={34} y={73} fill={reliabilityColor} fontSize={11} fontWeight={600}>
         {reliabilityLabel}
       </text>
-      {/* Port-to-port clarity */}
-      <text x={20} y={95} fill="#e2e8f0" fontSize={12}>
-        Port clarity: {segment.fromName} ({fromClarity}%) → {segment.toName} ({toClarity}%)
+      {/* Port-to-port clarity with material flow direction */}
+      <text x={20} y={95} fill="#e2e8f0" fontSize={12} fontWeight={600}>
+        Material flow direction:
+      </text>
+      {/* From port flow indicator */}
+      <rect x={20} y={102} width={6} height={6} rx={1} fill={fromFlowRole.color} />
+      <text x={32} y={109} fill={fromFlowRole.color} fontSize={10}>
+        {segment.fromName}: {fromFlowRole.label}
+      </text>
+      {/* To port flow indicator */}
+      <rect x={20} y={115} width={6} height={6} rx={1} fill={toFlowRole.color} />
+      <text x={32} y={122} fill={toFlowRole.color} fontSize={10}>
+        {segment.toName}: {toFlowRole.label}
+      </text>
+      {/* Port clarity percentages */}
+      <text x={20} y={140} fill="#94a3b8" fontSize={11}>
+        Port clarity: {fromClarity}% → {toClarity}%
       </text>
       {/* Combined clarity with color */}
-      <text x={20} y={120} fill={clarityColor} fontSize={13} fontWeight={600}>
+      <text x={20} y={160} fill={clarityColor} fontSize={13} fontWeight={600}>
         Combined: {combinedClarity}% — {clarityLabel}
       </text>
       {/* Material match quality */}
-      <text x={20} y={145} fill="#94a3b8" fontSize={11}>
+      <text x={20} y={180} fill="#94a3b8" fontSize={11}>
         Material evidence:{" "}
         {segment.materialMatchQuality === "exact"
           ? "Exact match"
@@ -250,15 +325,15 @@ function ExchangeClarityTooltip({
       {/* Linked Material Quick-View: Production data */}
       {matchedMaterial && (
         <>
-          <line x1={20} y1={160} x2={270} y2={160} stroke="#31528f" strokeWidth={1} />
-          <text x={20} y={180} fill="#78c8ff" fontSize={12} fontWeight={600}>
+          <line x1={20} y1={200} x2={270} y2={200} stroke="#31528f" strokeWidth={1} />
+          <text x={20} y={220} fill="#78c8ff" fontSize={12} fontWeight={600}>
             Linked: {matchedMaterial.name}
           </text>
-          <text x={20} y={197} fill="#94a3b8" fontSize={10}>
+          <text x={20} y={237} fill="#94a3b8" fontSize={10}>
             Top producers ({matchedMaterial.dataPoints[0]?.year}):
           </text>
           {topProducers.map((point, index) => (
-            <text key={point.country} x={20} y={215 + index * 16} fill="#e2e8f0" fontSize={10}>
+            <text key={point.country} x={20} y={255 + index * 16} fill="#e2e8f0" fontSize={10}>
               {index + 1}. {point.country}: {point.value.toLocaleString()} {point.unit}
             </text>
           ))}
