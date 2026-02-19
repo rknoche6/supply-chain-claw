@@ -251,22 +251,75 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
     };
   }, [segments, selectedCountry]);
 
-  const selectedRouteExchangeSummary = useMemo(() => {
+  // Build detailed exchange pathway with port clarity data
+  const selectedRouteExchangePathway = useMemo(() => {
     if (!selectedRoute || selectedRoute.stops.length < 2) {
       return null;
     }
 
-    const origin = selectedRoute.stops[0];
-    const destination = selectedRoute.stops[selectedRoute.stops.length - 1];
-    const transitStops = selectedRoute.stops.slice(1, -1);
+    const pathway = selectedRoute.stops.map((stop, index) => {
+      const port = portMarkers.find((p) => p.name === stop);
+      const role =
+        index === 0
+          ? "origin"
+          : index === selectedRoute.stops.length - 1
+            ? "destination"
+            : "transit";
+
+      return {
+        stop,
+        role,
+        clarityPercent: port?.clarityPercent ?? 0,
+        totalRoutes: port?.totalRoutes ?? 0,
+        legOutgoing: index < selectedRoute.stops.length - 1,
+        legIncoming: index > 0,
+      };
+    });
+
+    const legs = pathway.slice(0, -1).map((from, index) => {
+      const to = pathway[index + 1];
+      return {
+        from: from.stop,
+        to: to.stop,
+        fromClarity: from.clarityPercent,
+        toClarity: to.clarityPercent,
+        legNumber: index + 1,
+        legType: index === 0 ? "export" : index === pathway.length - 2 ? "import" : "transit",
+        combinedClarity: Math.round((from.clarityPercent + to.clarityPercent) / 2),
+      };
+    });
+
+    const overallClarity =
+      pathway.length > 0
+        ? Math.round(pathway.reduce((sum, p) => sum + p.clarityPercent, 0) / pathway.length)
+        : 0;
+
+    const recommendation =
+      selectedRoute.materialMatchQuality === "exact" && overallClarity >= 70
+        ? {
+            label: "Execution-ready",
+            action: "Route has strong material match and port evidence. Safe for planning.",
+            severity: "success" as const,
+          }
+        : selectedRoute.materialMatchQuality === "partial" || overallClarity >= 40
+          ? {
+              label: "Validate before execution",
+              action: "Review partial evidence and confirm port data before committing.",
+              severity: "warning" as const,
+            }
+          : {
+              label: "Data gap - research needed",
+              action: "Gather additional material evidence and port verification.",
+              severity: "error" as const,
+            };
 
     return {
-      origin,
-      destination,
-      transitStops,
-      totalLegs: selectedRoute.stops.length - 1,
+      pathway,
+      legs,
+      overallClarity,
+      recommendation,
     };
-  }, [selectedRoute]);
+  }, [selectedRoute, portMarkers]);
 
   const materialEvidenceSummary = useMemo(() => {
     const sourceRoutes = selectedRoute ? [selectedRoute] : normalizedRoutes;
@@ -610,32 +663,101 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
-      {selectedRouteExchangeSummary ? (
-        <div className="mapRouteDetail" role="status" aria-live="polite">
-          <p>
-            <strong>Selected exchange direction</strong>
-          </p>
-          <p>
-            <strong>{selectedRouteExchangeSummary.origin}</strong> (origin handoff) →{" "}
-            <strong>{selectedRouteExchangeSummary.destination}</strong> (destination handoff)
-          </p>
-          <p>
-            Route legs: <strong>{selectedRouteExchangeSummary.totalLegs}</strong> · Transit hubs:{" "}
-            <strong>{selectedRouteExchangeSummary.transitStops.length}</strong>
-            {selectedRouteExchangeSummary.transitStops.length > 0
-              ? ` (${selectedRouteExchangeSummary.transitStops.join(" → ")})`
-              : " (direct lane)"}
-          </p>
-          <p>
-            Material evidence quality:{" "}
-            <strong>
+      {selectedRouteExchangePathway ? (
+        <div className="mapRouteDetail mapRouteDetail--enhanced" role="status" aria-live="polite">
+          <div className="exchangePathwayHeader">
+            <p className="exchangePathwayTitle">
+              <strong>Exchange Pathway Clarity</strong>
+              <span
+                className={`exchangeClarityBadge exchangeClarityBadge--${selectedRouteExchangePathway.recommendation.severity}`}
+              >
+                {selectedRouteExchangePathway.recommendation.label}
+              </span>
+            </p>
+            <p className="exchangePathwayOverall">
+              Overall clarity: <strong>{selectedRouteExchangePathway.overallClarity}%</strong>
+            </p>
+          </div>
+
+          <div className="exchangePathwayFlow">
+            {selectedRouteExchangePathway.pathway.map((stop, index) => (
+              <div key={stop.stop} className="exchangePathwayStop">
+                <div
+                  className={`exchangePathwayNode exchangePathwayNode--${stop.role}`}
+                  title={`${stop.stop} - ${stop.clarityPercent}% evidence clarity (${stop.totalRoutes} routes)`}
+                >
+                  <span className="exchangePathwayNodeLabel">{stop.stop}</span>
+                  <span
+                    className="exchangePathwayNodeClarity"
+                    style={{
+                      color:
+                        stop.clarityPercent >= 80
+                          ? "#4ade80"
+                          : stop.clarityPercent >= 40
+                            ? "#fbbf24"
+                            : "#f87171",
+                    }}
+                  >
+                    {stop.clarityPercent}%
+                  </span>
+                </div>
+                {index < selectedRouteExchangePathway.pathway.length - 1 && (
+                  <div className="exchangePathwayConnector">
+                    <span className="exchangePathwayArrow">→</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="exchangePathwayLegs">
+            {selectedRouteExchangePathway.legs.map((leg) => (
+              <div
+                key={`${leg.from}-${leg.to}`}
+                className={`exchangePathwayLeg exchangePathwayLeg--${leg.legType}`}
+              >
+                <span className="exchangePathwayLegNumber">Leg {leg.legNumber}</span>
+                <span className="exchangePathwayLegType">
+                  {leg.legType === "export"
+                    ? "Export handoff"
+                    : leg.legType === "import"
+                      ? "Import handoff"
+                      : "Transit segment"}
+                </span>
+                <span
+                  className="exchangePathwayLegClarity"
+                  style={{
+                    color:
+                      leg.combinedClarity >= 80
+                        ? "#4ade80"
+                        : leg.combinedClarity >= 40
+                          ? "#fbbf24"
+                          : "#f87171",
+                  }}
+                >
+                  {leg.combinedClarity}% clarity
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="exchangePathwayMaterial">
+            <p>
+              <strong>Material Evidence:</strong>{" "}
               {selectedRoute?.materialMatchQuality === "exact"
-                ? "Exact"
+                ? "Exact match (execution-ready)"
                 : selectedRoute?.materialMatchQuality === "partial"
-                  ? "Partial"
-                  : "No direct match"}
-            </strong>
-          </p>
+                  ? "Partial match (verify details)"
+                  : "No direct material match (research needed)"}
+            </p>
+          </div>
+
+          <div className="exchangePathwayAction">
+            <p className="exchangePathwayActionText">
+              <strong>Recommended Action:</strong>{" "}
+              {selectedRouteExchangePathway.recommendation.action}
+            </p>
+          </div>
         </div>
       ) : null}
 
