@@ -28,6 +28,7 @@ type RouteSegment = {
   to: [number, number];
   isSelectedRoute: boolean;
   matchesCountryFilter: boolean;
+  materialMatchQuality?: "exact" | "partial" | "none";
 };
 
 type PortMarkerSummary = {
@@ -45,6 +46,12 @@ const categoryColor: Record<MappedRoute["category"], string> = {
   "Raw Materials": "#ffc857",
   Agriculture: "#98f5c9",
   Energy: "#ff8fa3",
+};
+
+const clarityDashArray: Record<"exact" | "partial" | "none", string> = {
+  exact: "none",
+  partial: "4,3",
+  none: "2,2",
 };
 
 const portCoordinates: Record<string, [number, number]> = {
@@ -99,6 +106,7 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           to: route.points[i],
           isSelectedRoute: selectedRouteId === null || route.id === selectedRouteId,
           matchesCountryFilter: route.matchesCountryFilter,
+          materialMatchQuality: route.materialMatchQuality,
         });
       }
     }
@@ -227,6 +235,9 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           const shouldEmphasize =
             segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true);
           const color = categoryColor[segment.category];
+          const dashArray = segment.materialMatchQuality
+            ? clarityDashArray[segment.materialMatchQuality]
+            : "2,2";
 
           return (
             <Line
@@ -237,6 +248,7 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
               strokeWidth={isActive ? 3 : shouldEmphasize ? 2.2 : 1}
               strokeLinecap="round"
               strokeOpacity={isActive ? 1 : shouldEmphasize ? 0.84 : 0.18}
+              strokeDasharray={dashArray}
               onMouseEnter={() => setActiveSegmentId(segmentId)}
               onMouseLeave={() => setActiveSegmentId((prev) => (prev === segmentId ? null : prev))}
               onClick={() => setActiveSegmentId(segmentId)}
@@ -339,6 +351,43 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
         <span>
           <strong>{materialEvidenceSummary.none}</strong> with no direct material match
+        </span>
+      </div>
+
+      <div className="mapLegend mapLegend--blocks" aria-label="Exchange clarity line style legend">
+        <span className="mapLegendItem">
+          <svg width="20" height="4" style={{ verticalAlign: "middle", marginRight: "6px" }}>
+            <line x1="0" y1="2" x2="20" y2="2" stroke="#78c8ff" strokeWidth="2" />
+          </svg>
+          Solid = Exact material match (execution-ready)
+        </span>
+        <span className="mapLegendItem">
+          <svg width="20" height="4" style={{ verticalAlign: "middle", marginRight: "6px" }}>
+            <line
+              x1="0"
+              y1="2"
+              x2="20"
+              y2="2"
+              stroke="#78c8ff"
+              strokeWidth="2"
+              strokeDasharray="4,3"
+            />
+          </svg>
+          Dashed = Partial match (verify before execution)
+        </span>
+        <span className="mapLegendItem">
+          <svg width="20" height="4" style={{ verticalAlign: "middle", marginRight: "6px" }}>
+            <line
+              x1="0"
+              y1="2"
+              x2="20"
+              y2="2"
+              stroke="#78c8ff"
+              strokeWidth="2"
+              strokeDasharray="2,2"
+            />
+          </svg>
+          Dotted = No material match (data gap)
         </span>
       </div>
 
