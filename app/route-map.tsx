@@ -72,6 +72,56 @@ const portCoordinates: Record<string, [number, number]> = {
   Yokohama: [139.64, 35.44],
 };
 
+// Calculate midpoint between two coordinates
+function getMidpoint(from: [number, number], to: [number, number]): [number, number] {
+  return [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+}
+
+// Calculate geographic bearing between two points in degrees
+// Returns angle where 0 = North, 90 = East, 180 = South, 270 = West
+function getGeographicBearing(from: [number, number], to: [number, number]): number {
+  const [fromLng, fromLat] = from;
+  const [toLng, toLat] = to;
+
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const deltaLng = ((toLng - fromLng) * Math.PI) / 180;
+
+  const y = Math.sin(deltaLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
+
+  const bearingRad = Math.atan2(y, x);
+  const bearing = ((bearingRad * 180) / Math.PI + 360) % 360;
+
+  // Convert to SVG rotation (0 = right/east, 90 = down/south)
+  // Geographic bearing: 0 = North, 90 = East
+  // SVG rotation: 0 = East, 90 = South
+  // Adjust: SVG angle = 90 - geographic bearing
+  return 90 - bearing;
+}
+
+// Directional arrow marker using Marker component for proper projection
+type FlowArrowProps = {
+  from: [number, number];
+  to: [number, number];
+  color: string;
+  size: number;
+  opacity: number;
+};
+
+function FlowArrow({ from, to, color, size, opacity }: FlowArrowProps) {
+  const bearing = useMemo(() => getGeographicBearing(from, to), [from, to]);
+  const midpoint = useMemo(() => getMidpoint(from, to), [from, to]);
+
+  return (
+    <Marker coordinates={midpoint}>
+      <g transform={`rotate(${bearing})`} opacity={opacity}>
+        <polygon points={`0,0 ${-size},${-size / 2} ${-size},${size / 2}`} fill={color} />
+      </g>
+    </Marker>
+  );
+}
+
 export default function RouteMap({ routes, selectedRouteId, selectedCountry }: RouteMapProps) {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
 
@@ -206,6 +256,21 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
     );
   }, [normalizedRoutes, selectedRoute]);
 
+  const materialClarityPercentages = useMemo(() => {
+    const total =
+      materialEvidenceSummary.exact +
+      materialEvidenceSummary.partial +
+      materialEvidenceSummary.none;
+    if (total === 0) return { exact: 0, partial: 0, none: 0, total: 0 };
+
+    return {
+      exact: Math.round((materialEvidenceSummary.exact / total) * 100),
+      partial: Math.round((materialEvidenceSummary.partial / total) * 100),
+      none: Math.round((materialEvidenceSummary.none / total) * 100),
+      total,
+    };
+  }, [materialEvidenceSummary]);
+
   return (
     <div
       className="mapFrame mapFrame--enhanced"
@@ -252,6 +317,31 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
               onMouseEnter={() => setActiveSegmentId(segmentId)}
               onMouseLeave={() => setActiveSegmentId((prev) => (prev === segmentId ? null : prev))}
               onClick={() => setActiveSegmentId(segmentId)}
+            />
+          );
+        })}
+
+        {/* Directional flow arrows for exchange clarity */}
+        {segments.map((segment, index) => {
+          const segmentId = `${segment.routeId}-${index}`;
+          const isActive = activeSegmentId === segmentId;
+          const shouldEmphasize =
+            segment.isSelectedRoute && (selectedCountry ? segment.matchesCountryFilter : true);
+          const color = categoryColor[segment.category];
+          const arrowSize = isActive ? 6 : shouldEmphasize ? 5 : 3;
+          const arrowOpacity = isActive ? 1 : shouldEmphasize ? 0.9 : 0.35;
+
+          // Only show arrows for emphasized segments to reduce visual noise
+          if (!shouldEmphasize) return null;
+
+          return (
+            <FlowArrow
+              key={`arrow-${segmentId}`}
+              from={segment.from}
+              to={segment.to}
+              color={color}
+              size={arrowSize}
+              opacity={arrowOpacity}
             />
           );
         })}
@@ -354,6 +444,75 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
+      <div
+        className="mapLegend mapLegend--blocks"
+        aria-label="Material exchange data quality clarity bar"
+      >
+        <div style={{ width: "100%", marginTop: "4px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "4px",
+              fontSize: "12px",
+            }}
+          >
+            <span>
+              Data quality: <strong>{materialClarityPercentages.exact}%</strong> execution-ready
+            </span>
+            <span>
+              {materialClarityPercentages.total} route
+              {materialClarityPercentages.total !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div
+            style={{
+              width: "100%",
+              height: "8px",
+              background: "#182744",
+              borderRadius: "4px",
+              overflow: "hidden",
+              display: "flex",
+            }}
+          >
+            <div
+              style={{
+                width: `${materialClarityPercentages.exact}%`,
+                height: "100%",
+                background: "#4ade80",
+                transition: "width 0.3s ease",
+              }}
+              title={`Exact match: ${materialEvidenceSummary.exact} routes (${materialClarityPercentages.exact}%)`}
+            />
+            <div
+              style={{
+                width: `${materialClarityPercentages.partial}%`,
+                height: "100%",
+                background: "#fbbf24",
+                transition: "width 0.3s ease",
+              }}
+              title={`Partial match: ${materialEvidenceSummary.partial} routes (${materialClarityPercentages.partial}%)`}
+            />
+            <div
+              style={{
+                width: `${materialClarityPercentages.none}%`,
+                height: "100%",
+                background: "#f87171",
+                transition: "width 0.3s ease",
+              }}
+              title={`No material match: ${materialEvidenceSummary.none} routes (${materialClarityPercentages.none}%)`}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "12px", marginTop: "6px", fontSize: "11px" }}>
+            <span style={{ color: "#4ade80" }}>● Exact ({materialClarityPercentages.exact}%)</span>
+            <span style={{ color: "#fbbf24" }}>
+              ● Partial ({materialClarityPercentages.partial}%)
+            </span>
+            <span style={{ color: "#f87171" }}>● Gap ({materialClarityPercentages.none}%)</span>
+          </div>
+        </div>
+      </div>
+
       <div className="mapLegend mapLegend--blocks" aria-label="Exchange clarity line style legend">
         <span className="mapLegendItem">
           <svg width="20" height="4" style={{ verticalAlign: "middle", marginRight: "6px" }}>
@@ -388,6 +547,13 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
             />
           </svg>
           Dotted = No material match (data gap)
+        </span>
+        <span className="mapLegendItem">
+          <svg width="20" height="12" style={{ verticalAlign: "middle", marginRight: "6px" }}>
+            <polygon points="16,6 10,3 10,9" fill="#78c8ff" />
+            <line x1="0" y1="6" x2="10" y2="6" stroke="#78c8ff" strokeWidth="1.5" />
+          </svg>
+          Arrow = Exchange flow direction (origin → destination)
         </span>
       </div>
 
