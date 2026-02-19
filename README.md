@@ -2,10 +2,10 @@
 
 [Live site](https://supply-chain-claw.vercel.app)
 
-
 Supply Chain Claw is an explorer-first web app for understanding global material and trade flows.
 
 It helps you answer questions like:
+
 - Which countries are key exporters/importers for a material?
 - Where are data gaps in country-to-country exchange lanes?
 - How comparable are two countries across the same material (year, unit, source, confidence)?
@@ -21,6 +21,7 @@ It helps you answer questions like:
 - **Review methodology** and data-quality rules (confidence/freshness/source coverage)
 
 Core routes:
+
 - `/` — command-center home
 - `/materials` and `/materials/[slug]`
 - `/countries` and `/countries/[slug]`
@@ -85,6 +86,7 @@ npm run build
 The app is designed around source-cited, structured records.
 
 Expected fields per record:
+
 - material/product
 - country
 - metric
@@ -104,6 +106,7 @@ When records are uncertain or conflicting, they should be skipped until properly
 This is an actively evolving project with frequent incremental updates.
 
 Current direction:
+
 - Expand high-quality material coverage
 - Improve map usability for exchange-lane decisions
 - Improve country-to-country comparability and evidence clarity

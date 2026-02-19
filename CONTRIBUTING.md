@@ -9,10 +9,12 @@ This project values **accuracy, comparability, and clarity** over volume. Please
 ## Ground rules
 
 1. **No fabricated data**
+
    - Do not add guessed/placeholder numeric records.
    - If a source is uncertain/conflicting, leave it out and note the gap.
 
 2. **Preserve quality gates**
+
    - All contributions should pass:
      - `npm run format:write`
      - `npm run lint`
@@ -20,6 +22,7 @@ This project values **accuracy, comparability, and clarity** over volume. Please
      - `npm run build`
 
 3. **Keep explorer UX focused**
+
    - Prioritize useful workflows: search, filters, country/material drilldowns, compare, map clarity.
 
 4. **Be explicit about comparability**
@@ -49,6 +52,7 @@ npm run dev
   - `docs(...)`
 
 Examples:
+
 - `feat(compare): add matched-year-only filter`
 - `fix(materials): prevent unit-mismatched delta rendering`
 
@@ -67,6 +71,7 @@ Before opening a PR:
 - [ ] I avoided adding roadmap/marketing text into explorer UI
 
 In PR description, include:
+
 - what changed
 - why it matters for users
 - screenshots/GIFs for UI changes (if applicable)
@@ -77,6 +82,7 @@ In PR description, include:
 ## Data contribution guidance
 
 For new records, include at minimum:
+
 - value
 - unit
 - year
@@ -84,6 +90,7 @@ For new records, include at minimum:
 - source URL
 
 Preferred source types:
+
 - official/public statistical sources (USGS, UN, World Bank, IEA, FAO, etc.)
 
 ---
@@ -99,6 +106,7 @@ Preferred source types:
 ## Need help?
 
 Open an issue with:
+
 - the exact problem
 - expected vs actual behavior
 - reproduction steps

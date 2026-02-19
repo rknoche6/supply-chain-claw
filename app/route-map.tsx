@@ -114,6 +114,76 @@ type FlowArrowProps = {
   opacity: number;
 };
 
+// Port-to-port exchange clarity tooltip component
+type ExchangeClarityTooltipProps = {
+  segment: RouteSegment;
+  portMarkers: PortMarkerSummary[];
+  isVisible: boolean;
+};
+
+function ExchangeClarityTooltip({ segment, portMarkers, isVisible }: ExchangeClarityTooltipProps) {
+  if (!isVisible) return null;
+
+  const fromPort = portMarkers.find((p) => p.name === segment.fromName);
+  const toPort = portMarkers.find((p) => p.name === segment.toName);
+
+  const fromClarity = fromPort?.clarityPercent ?? 0;
+  const toClarity = toPort?.clarityPercent ?? 0;
+  const combinedClarity = Math.round((fromClarity + toClarity) / 2);
+
+  const clarityLabel =
+    combinedClarity >= 80
+      ? "Execution-ready"
+      : combinedClarity >= 40
+        ? "Validate before execution"
+        : "Data gap - research needed";
+
+  const clarityColor =
+    combinedClarity >= 80 ? "#4ade80" : combinedClarity >= 40 ? "#fbbf24" : "#f87171";
+
+  return (
+    <g>
+      {/* Tooltip background */}
+      <rect
+        x={10}
+        y={10}
+        width={280}
+        height={140}
+        rx={8}
+        fill="#0f172a"
+        stroke="#31528f"
+        strokeWidth={1}
+        opacity={0.95}
+      />
+      {/* Product name */}
+      <text x={20} y={35} fill="#e2e8f0" fontSize={14} fontWeight={600}>
+        {segment.product}
+      </text>
+      {/* Category */}
+      <text x={20} y={55} fill="#94a3b8" fontSize={12}>
+        {segment.category}
+      </text>
+      {/* Port-to-port clarity */}
+      <text x={20} y={80} fill="#e2e8f0" fontSize={12}>
+        Port clarity: {segment.fromName} ({fromClarity}%) → {segment.toName} ({toClarity}%)
+      </text>
+      {/* Combined clarity with color */}
+      <text x={20} y={105} fill={clarityColor} fontSize={13} fontWeight={600}>
+        Combined: {combinedClarity}% — {clarityLabel}
+      </text>
+      {/* Material match quality */}
+      <text x={20} y={130} fill="#94a3b8" fontSize={11}>
+        Material evidence:{" "}
+        {segment.materialMatchQuality === "exact"
+          ? "Exact match"
+          : segment.materialMatchQuality === "partial"
+            ? "Partial match"
+            : "No direct match"}
+      </text>
+    </g>
+  );
+}
+
 function FlowArrow({ from, to, color, size, opacity }: FlowArrowProps) {
   const bearing = useMemo(() => getGeographicBearing(from, to), [from, to]);
   const midpoint = useMemo(() => getMidpoint(from, to), [from, to]);
@@ -129,6 +199,7 @@ function FlowArrow({ from, to, color, size, opacity }: FlowArrowProps) {
 
 export default function RouteMap({ routes, selectedRouteId, selectedCountry }: RouteMapProps) {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const [hoveredSegmentTooltip, setHoveredSegmentTooltip] = useState<RouteSegment | null>(null);
 
   const normalizedRoutes = useMemo(
     () =>
@@ -398,12 +469,29 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
               strokeLinecap="round"
               strokeOpacity={isActive ? 1 : shouldEmphasize ? 0.84 : 0.18}
               strokeDasharray={dashArray}
-              onMouseEnter={() => setActiveSegmentId(segmentId)}
-              onMouseLeave={() => setActiveSegmentId((prev) => (prev === segmentId ? null : prev))}
+              onMouseEnter={() => {
+                setActiveSegmentId(segmentId);
+                setHoveredSegmentTooltip(segment);
+              }}
+              onMouseLeave={() => {
+                setActiveSegmentId((prev) => (prev === segmentId ? null : prev));
+                setHoveredSegmentTooltip(null);
+              }}
               onClick={() => setActiveSegmentId(segmentId)}
             />
           );
         })}
+
+        {/* Port-to-port exchange clarity tooltip overlay */}
+        {hoveredSegmentTooltip && (
+          <Marker coordinates={getMidpoint(hoveredSegmentTooltip.from, hoveredSegmentTooltip.to)}>
+            <ExchangeClarityTooltip
+              segment={hoveredSegmentTooltip}
+              portMarkers={portMarkers}
+              isVisible={true}
+            />
+          </Marker>
+        )}
 
         {/* Directional flow arrows for exchange clarity */}
         {segments.map((segment, index) => {
