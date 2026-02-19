@@ -1,43 +1,16 @@
-type ContainerProps = { children: React.ReactNode };
-
-type CardProps = {
-  title?: string;
-  subtitle?: string;
-  children: React.ReactNode;
-};
-
-type PillProps = {
-  children: React.ReactNode;
-  tone?: "neutral" | "primary" | "success";
-};
-
-type StatGridProps = {
-  children: React.ReactNode;
-};
-
-type StatCardProps = {
-  label: string;
-  value: string;
-  hint?: string;
-};
-
-type SectionHeaderProps = {
-  eyebrow?: string;
-  title: string;
-  description?: string;
-};
-
-type TokenSwatchProps = {
-  label: string;
-  token: string;
-  value: string;
-};
-
-export function Container({ children }: ContainerProps) {
+export function Container({ children }: { children: React.ReactNode }) {
   return <main className="container">{children}</main>;
 }
 
-export function Card({ title, subtitle, children }: CardProps) {
+export function Card({
+  title,
+  subtitle,
+  children,
+}: {
+  title?: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="card">
       {title ? <h2>{title}</h2> : null}
@@ -47,15 +20,21 @@ export function Card({ title, subtitle, children }: CardProps) {
   );
 }
 
-export function Pill({ children, tone = "neutral" }: PillProps) {
+export function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "primary" | "success";
+}) {
   return <span className={`pill pill--${tone}`}>{children}</span>;
 }
 
-export function StatGrid({ children }: StatGridProps) {
+export function StatGrid({ children }: { children: React.ReactNode }) {
   return <div className="statGrid">{children}</div>;
 }
 
-export function StatCard({ label, value, hint }: StatCardProps) {
+export function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <article className="statCard">
       <p className="statLabel">{label}</p>
@@ -65,7 +44,15 @@ export function StatCard({ label, value, hint }: StatCardProps) {
   );
 }
 
-export function SectionHeader({ eyebrow, title, description }: SectionHeaderProps) {
+export function SectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}) {
   return (
     <header className="sectionHeader">
       {eyebrow ? <p className="sectionEyebrow">{eyebrow}</p> : null}
@@ -75,7 +62,15 @@ export function SectionHeader({ eyebrow, title, description }: SectionHeaderProp
   );
 }
 
-export function TokenSwatch({ label, token, value }: TokenSwatchProps) {
+export function TokenSwatch({
+  label,
+  token,
+  value,
+}: {
+  label: string;
+  token: string;
+  value: string;
+}) {
   return (
     <article className="tokenSwatch">
       <span
