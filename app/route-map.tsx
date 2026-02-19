@@ -37,6 +37,11 @@ type PortMarkerSummary = {
   startCount: number;
   endCount: number;
   transitCount: number;
+  exactCount: number;
+  partialCount: number;
+  noneCount: number;
+  clarityPercent: number;
+  totalRoutes: number;
 };
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -171,7 +176,10 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         null);
 
   const portMarkers = useMemo(() => {
-    const markerSummary = new Map<string, PortMarkerSummary>();
+    const markerSummary = new Map<
+      string,
+      PortMarkerSummary & { exactCount: number; partialCount: number; noneCount: number }
+    >();
 
     const sourceRoutes = selectedRoute ? [selectedRoute] : normalizedRoutes;
 
@@ -190,6 +198,11 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           startCount: 0,
           endCount: 0,
           transitCount: 0,
+          exactCount: 0,
+          partialCount: 0,
+          noneCount: 0,
+          clarityPercent: 0,
+          totalRoutes: 0,
         };
 
         if (index === 0) {
@@ -200,11 +213,29 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           existing.transitCount += 1;
         }
 
+        // Track material evidence quality at this port
+        if (route.materialMatchQuality === "exact") {
+          existing.exactCount += 1;
+        } else if (route.materialMatchQuality === "partial") {
+          existing.partialCount += 1;
+        } else {
+          existing.noneCount += 1;
+        }
+
         markerSummary.set(stop, existing);
       }
     }
 
-    return Array.from(markerSummary.values());
+    return Array.from(markerSummary.values()).map((port) => {
+      const total = port.exactCount + port.partialCount + port.noneCount;
+      const clarityPercent = total > 0 ? Math.round((port.exactCount / total) * 100) : 0;
+
+      return {
+        ...port,
+        clarityPercent,
+        totalRoutes: total,
+      };
+    });
   }, [normalizedRoutes, selectedRoute]);
 
   const segmentCoverage = useMemo(() => {
@@ -366,8 +397,24 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
                 ? "#d04f72"
                 : "#f4b42c";
 
+          // Port clarity ring color based on material evidence coverage
+          const clarityRingColor =
+            port.clarityPercent >= 80
+              ? "#4ade80"
+              : port.clarityPercent >= 40
+                ? "#fbbf24"
+                : "#f87171";
+
           return (
             <Marker key={port.name} coordinates={port.coordinates}>
+              {/* Material evidence clarity ring */}
+              <circle
+                r={selectedRoute ? 5.5 : 4.8}
+                fill="transparent"
+                stroke={clarityRingColor}
+                strokeWidth={1.5}
+                opacity={0.7}
+              />
               <circle
                 r={selectedRoute ? 3.2 : 2.8}
                 fill={markerFill}
@@ -388,7 +435,7 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         ))}
       </div>
 
-      <div className="mapLegend mapLegend--blocks" aria-label="Port role legend">
+      <div className="mapLegend mapLegend--blocks" aria-label="Port role and clarity legend">
         <span className="mapLegendItem">
           <span className="mapLegendDot" style={{ backgroundColor: "#87d4ff" }} />
           Export handoff (start)
@@ -404,6 +451,12 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         <span className="mapLegendItem">
           <span className="mapLegendDot" style={{ backgroundColor: "#d7b7ff" }} />
           Dual-role hub
+        </span>
+        <span className="mapLegendItem">
+          <svg width="14" height="14" style={{ marginRight: "6px" }}>
+            <circle cx="7" cy="7" r="5" fill="transparent" stroke="#4ade80" strokeWidth="2" />
+          </svg>
+          Port ring = material evidence clarity (green = 80%+ exact matches)
         </span>
       </div>
 
@@ -619,6 +672,44 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
                   : "No direct material match (data gap)"}
             </span>
           </p>
+          {(() => {
+            const fromPort = portMarkers.find((p) => p.name === activeSegment.fromName);
+            const toPort = portMarkers.find((p) => p.name === activeSegment.toName);
+            return (
+              <p style={{ fontSize: "12px", marginTop: "4px" }}>
+                Port evidence clarity:{" "}
+                {fromPort && (
+                  <span
+                    style={{
+                      color:
+                        fromPort.clarityPercent >= 80
+                          ? "#4ade80"
+                          : fromPort.clarityPercent >= 40
+                            ? "#fbbf24"
+                            : "#f87171",
+                    }}
+                  >
+                    {activeSegment.fromName} ({fromPort.clarityPercent}%)
+                  </span>
+                )}
+                {" → "}
+                {toPort && (
+                  <span
+                    style={{
+                      color:
+                        toPort.clarityPercent >= 80
+                          ? "#4ade80"
+                          : toPort.clarityPercent >= 40
+                            ? "#fbbf24"
+                            : "#f87171",
+                    }}
+                  >
+                    {activeSegment.toName} ({toPort.clarityPercent}%)
+                  </span>
+                )}
+              </p>
+            );
+          })()}
         </div>
       ) : null}
     </div>
