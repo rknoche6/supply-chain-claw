@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, Line, Marker } from "react-simple-maps";
+import { type RawMaterialItem } from "../lib/raw-materials";
 
 type MappedRoute = {
   id: string;
@@ -10,6 +11,7 @@ type MappedRoute = {
   stops: string[];
   matchesCountryFilter: boolean;
   materialMatchQuality?: "exact" | "partial" | "none";
+  matchedMaterial?: RawMaterialItem | null;
 };
 
 type RouteMapProps = {
@@ -119,9 +121,15 @@ type ExchangeClarityTooltipProps = {
   segment: RouteSegment;
   portMarkers: PortMarkerSummary[];
   isVisible: boolean;
+  matchedMaterial?: RawMaterialItem | null;
 };
 
-function ExchangeClarityTooltip({ segment, portMarkers, isVisible }: ExchangeClarityTooltipProps) {
+function ExchangeClarityTooltip({
+  segment,
+  portMarkers,
+  isVisible,
+  matchedMaterial,
+}: ExchangeClarityTooltipProps) {
   if (!isVisible) return null;
 
   const fromPort = portMarkers.find((p) => p.name === segment.fromName);
@@ -141,6 +149,13 @@ function ExchangeClarityTooltip({ segment, portMarkers, isVisible }: ExchangeCla
   const clarityColor =
     combinedClarity >= 80 ? "#4ade80" : combinedClarity >= 40 ? "#fbbf24" : "#f87171";
 
+  // Get top 3 producing countries for matched material
+  const topProducers = matchedMaterial
+    ? [...matchedMaterial.dataPoints].sort((a, b) => b.value - a.value).slice(0, 3)
+    : [];
+
+  const tooltipHeight = matchedMaterial ? 220 : 140;
+
   return (
     <g>
       {/* Tooltip background */}
@@ -148,7 +163,7 @@ function ExchangeClarityTooltip({ segment, portMarkers, isVisible }: ExchangeCla
         x={10}
         y={10}
         width={280}
-        height={140}
+        height={tooltipHeight}
         rx={8}
         fill="#0f172a"
         stroke="#31528f"
@@ -180,6 +195,24 @@ function ExchangeClarityTooltip({ segment, portMarkers, isVisible }: ExchangeCla
             ? "Partial match"
             : "No direct match"}
       </text>
+
+      {/* Linked Material Quick-View: Production data */}
+      {matchedMaterial && (
+        <>
+          <line x1={20} y1={145} x2={270} y2={145} stroke="#31528f" strokeWidth={1} />
+          <text x={20} y={165} fill="#78c8ff" fontSize={12} fontWeight={600}>
+            Linked: {matchedMaterial.name}
+          </text>
+          <text x={20} y={182} fill="#94a3b8" fontSize={10}>
+            Top producers ({matchedMaterial.dataPoints[0]?.year}):
+          </text>
+          {topProducers.map((point, index) => (
+            <text key={point.country} x={20} y={200 + index * 16} fill="#e2e8f0" fontSize={10}>
+              {index + 1}. {point.country}: {point.value.toLocaleString()} {point.unit}
+            </text>
+          ))}
+        </>
+      )}
     </g>
   );
 }
@@ -606,6 +639,10 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
               segment={hoveredSegmentTooltip}
               portMarkers={portMarkers}
               isVisible={true}
+              matchedMaterial={
+                normalizedRoutes.find((r) => r.id === hoveredSegmentTooltip.routeId)
+                  ?.matchedMaterial
+              }
             />
           </Marker>
         )}
