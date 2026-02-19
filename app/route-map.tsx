@@ -599,6 +599,26 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           <p>
             {activeSegment.fromName} → {activeSegment.toName}
           </p>
+          <p>
+            Data quality:{" "}
+            <span
+              style={{
+                color:
+                  activeSegment.materialMatchQuality === "exact"
+                    ? "#4ade80"
+                    : activeSegment.materialMatchQuality === "partial"
+                      ? "#fbbf24"
+                      : "#f87171",
+                fontWeight: 600,
+              }}
+            >
+              {activeSegment.materialMatchQuality === "exact"
+                ? "Exact match (execution-ready)"
+                : activeSegment.materialMatchQuality === "partial"
+                  ? "Partial match (verify before execution)"
+                  : "No direct material match (data gap)"}
+            </span>
+          </p>
         </div>
       ) : null}
     </div>
