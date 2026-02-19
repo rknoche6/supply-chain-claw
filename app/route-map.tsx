@@ -31,6 +31,7 @@ type RouteSegment = {
   isSelectedRoute: boolean;
   matchesCountryFilter: boolean;
   materialMatchQuality?: "exact" | "partial" | "none";
+  corridorReliability?: "high" | "medium" | "low";
 };
 
 type PortMarkerSummary = {
@@ -82,6 +83,36 @@ const portCoordinates: Record<string, [number, number]> = {
 // Calculate midpoint between two coordinates
 function getMidpoint(from: [number, number], to: [number, number]): [number, number] {
   return [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+}
+
+// Calculate corridor exchange reliability based on material evidence at both ports
+// and the product's material match quality
+function calculateCorridorReliability(
+  fromPort: PortMarkerSummary | undefined,
+  toPort: PortMarkerSummary | undefined,
+  materialMatchQuality: "exact" | "partial" | "none" | undefined
+): "high" | "medium" | "low" {
+  const fromClarity = fromPort?.clarityPercent ?? 0;
+  const toClarity = toPort?.clarityPercent ?? 0;
+
+  // Base score is average of both port clarity percentages
+  const baseScore = (fromClarity + toClarity) / 2;
+
+  // Apply material match quality multiplier
+  let multiplier = 1;
+  if (materialMatchQuality === "exact") {
+    multiplier = 1.0;
+  } else if (materialMatchQuality === "partial") {
+    multiplier = 0.7;
+  } else {
+    multiplier = 0.3;
+  }
+
+  const finalScore = baseScore * multiplier;
+
+  if (finalScore >= 60) return "high";
+  if (finalScore >= 30) return "medium";
+  return "low";
 }
 
 // Calculate geographic bearing between two points in degrees
@@ -149,12 +180,27 @@ function ExchangeClarityTooltip({
   const clarityColor =
     combinedClarity >= 80 ? "#4ade80" : combinedClarity >= 40 ? "#fbbf24" : "#f87171";
 
+  // Corridor reliability label
+  const reliabilityLabel =
+    segment.corridorReliability === "high"
+      ? "High reliability"
+      : segment.corridorReliability === "medium"
+        ? "Medium reliability"
+        : "Low reliability - verify before use";
+
+  const reliabilityColor =
+    segment.corridorReliability === "high"
+      ? "#4ade80"
+      : segment.corridorReliability === "medium"
+        ? "#fbbf24"
+        : "#f87171";
+
   // Get top 3 producing countries for matched material
   const topProducers = matchedMaterial
     ? [...matchedMaterial.dataPoints].sort((a, b) => b.value - a.value).slice(0, 3)
     : [];
 
-  const tooltipHeight = matchedMaterial ? 220 : 140;
+  const tooltipHeight = matchedMaterial ? 240 : 160;
 
   return (
     <g>
@@ -178,16 +224,21 @@ function ExchangeClarityTooltip({
       <text x={20} y={55} fill="#94a3b8" fontSize={12}>
         {segment.category}
       </text>
+      {/* Corridor reliability badge */}
+      <rect x={20} y={65} width={8} height={8} rx={2} fill={reliabilityColor} />
+      <text x={34} y={73} fill={reliabilityColor} fontSize={11} fontWeight={600}>
+        {reliabilityLabel}
+      </text>
       {/* Port-to-port clarity */}
-      <text x={20} y={80} fill="#e2e8f0" fontSize={12}>
+      <text x={20} y={95} fill="#e2e8f0" fontSize={12}>
         Port clarity: {segment.fromName} ({fromClarity}%) → {segment.toName} ({toClarity}%)
       </text>
       {/* Combined clarity with color */}
-      <text x={20} y={105} fill={clarityColor} fontSize={13} fontWeight={600}>
+      <text x={20} y={120} fill={clarityColor} fontSize={13} fontWeight={600}>
         Combined: {combinedClarity}% — {clarityLabel}
       </text>
       {/* Material match quality */}
-      <text x={20} y={130} fill="#94a3b8" fontSize={11}>
+      <text x={20} y={145} fill="#94a3b8" fontSize={11}>
         Material evidence:{" "}
         {segment.materialMatchQuality === "exact"
           ? "Exact match"
@@ -199,15 +250,15 @@ function ExchangeClarityTooltip({
       {/* Linked Material Quick-View: Production data */}
       {matchedMaterial && (
         <>
-          <line x1={20} y1={145} x2={270} y2={145} stroke="#31528f" strokeWidth={1} />
-          <text x={20} y={165} fill="#78c8ff" fontSize={12} fontWeight={600}>
+          <line x1={20} y1={160} x2={270} y2={160} stroke="#31528f" strokeWidth={1} />
+          <text x={20} y={180} fill="#78c8ff" fontSize={12} fontWeight={600}>
             Linked: {matchedMaterial.name}
           </text>
-          <text x={20} y={182} fill="#94a3b8" fontSize={10}>
+          <text x={20} y={197} fill="#94a3b8" fontSize={10}>
             Top producers ({matchedMaterial.dataPoints[0]?.year}):
           </text>
           {topProducers.map((point, index) => (
-            <text key={point.country} x={20} y={200 + index * 16} fill="#e2e8f0" fontSize={10}>
+            <text key={point.country} x={20} y={215 + index * 16} fill="#e2e8f0" fontSize={10}>
               {index + 1}. {point.country}: {point.value.toLocaleString()} {point.unit}
             </text>
           ))}
@@ -328,8 +379,64 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
   const segments = useMemo(() => {
     const rows: RouteSegment[] = [];
 
+    // Pre-compute port markers for corridor reliability calculation
+    const portMap = new Map<string, PortMarkerSummary>();
+    for (const route of normalizedRoutes) {
+      for (let index = 0; index < route.stops.length; index += 1) {
+        const stop = route.stops[index];
+        const coordinates = portCoordinates[stop];
+        if (!coordinates) continue;
+
+        const existing = portMap.get(stop) ?? {
+          name: stop,
+          coordinates,
+          startCount: 0,
+          endCount: 0,
+          transitCount: 0,
+          exactCount: 0,
+          partialCount: 0,
+          noneCount: 0,
+          clarityPercent: 0,
+          totalRoutes: 0,
+        };
+
+        if (index === 0) {
+          existing.startCount += 1;
+        } else if (index === route.stops.length - 1) {
+          existing.endCount += 1;
+        } else {
+          existing.transitCount += 1;
+        }
+
+        if (route.materialMatchQuality === "exact") {
+          existing.exactCount += 1;
+        } else if (route.materialMatchQuality === "partial") {
+          existing.partialCount += 1;
+        } else {
+          existing.noneCount += 1;
+        }
+
+        portMap.set(stop, existing);
+      }
+    }
+
+    // Calculate clarity percentages
+    for (const port of portMap.values()) {
+      const total = port.exactCount + port.partialCount + port.noneCount;
+      port.clarityPercent = total > 0 ? Math.round((port.exactCount / total) * 100) : 0;
+      port.totalRoutes = total;
+    }
+
     for (const route of normalizedRoutes) {
       for (let i = 1; i < route.points.length; i += 1) {
+        const fromPort = portMap.get(route.stops[i - 1]);
+        const toPort = portMap.get(route.stops[i]);
+        const corridorReliability = calculateCorridorReliability(
+          fromPort,
+          toPort,
+          route.materialMatchQuality
+        );
+
         rows.push({
           routeId: route.id,
           product: route.product,
@@ -341,6 +448,7 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           isSelectedRoute: selectedRouteId === null || route.id === selectedRouteId,
           matchesCountryFilter: route.matchesCountryFilter,
           materialMatchQuality: route.materialMatchQuality,
+          corridorReliability,
         });
       }
     }
@@ -905,6 +1013,54 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
         </span>
       </div>
 
+      <div className="mapLegend mapLegend--blocks" aria-label="Corridor reliability legend">
+        <span className="mapLegendItem" style={{ fontWeight: 600 }}>
+          Corridor Reliability (port evidence + material match):
+        </span>
+        <span className="mapLegendItem">
+          <span
+            style={{
+              display: "inline-block",
+              width: "12px",
+              height: "12px",
+              background: "#4ade80",
+              borderRadius: "2px",
+              marginRight: "6px",
+              verticalAlign: "middle",
+            }}
+          />
+          High (≥60% combined score) — Safe for planning
+        </span>
+        <span className="mapLegendItem">
+          <span
+            style={{
+              display: "inline-block",
+              width: "12px",
+              height: "12px",
+              background: "#fbbf24",
+              borderRadius: "2px",
+              marginRight: "6px",
+              verticalAlign: "middle",
+            }}
+          />
+          Medium (30-59%) — Validate before execution
+        </span>
+        <span className="mapLegendItem">
+          <span
+            style={{
+              display: "inline-block",
+              width: "12px",
+              height: "12px",
+              background: "#f87171",
+              borderRadius: "2px",
+              marginRight: "6px",
+              verticalAlign: "middle",
+            }}
+          />
+          Low (&lt;30%) — Research needed
+        </span>
+      </div>
+
       {selectedRouteExchangePathway ? (
         <div className="mapRouteDetail mapRouteDetail--enhanced" role="status" aria-live="polite">
           <div className="exchangePathwayHeader">
@@ -1016,6 +1172,26 @@ export default function RouteMap({ routes, selectedRouteId, selectedCountry }: R
           </p>
           <p>
             {activeSegment.fromName} → {activeSegment.toName}
+          </p>
+          <p>
+            Corridor reliability:{" "}
+            <span
+              style={{
+                color:
+                  activeSegment.corridorReliability === "high"
+                    ? "#4ade80"
+                    : activeSegment.corridorReliability === "medium"
+                      ? "#fbbf24"
+                      : "#f87171",
+                fontWeight: 600,
+              }}
+            >
+              {activeSegment.corridorReliability === "high"
+                ? "High — Safe for planning"
+                : activeSegment.corridorReliability === "medium"
+                  ? "Medium — Validate before execution"
+                  : "Low — Research needed"}
+            </span>
           </p>
           <p>
             Data quality:{" "}
